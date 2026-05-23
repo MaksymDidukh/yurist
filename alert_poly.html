@@ -1,6 +1,6 @@
 <script>
 (function() {
-    // 1. Создаем стили (добавлены стили для встроенного кружка выбора цвета)
+    // 1. Создаем стили
     const style = document.createElement('style');
     style.innerHTML = `
         .universal-legal-footer {
@@ -18,36 +18,46 @@
             box-sizing: border-box; color: #c9d1d9; font-family: sans-serif; line-height: 1.5;
         }
         .modal-content {
-            background: #161b22; max-width: 800px; margin: 40px auto; 
+            background: #161b22; max-width: 600px; margin: 40px auto; 
             padding: 30px; border-radius: 8px; border: 1px solid #30363d; position: relative;
         }
         .close-modal { position: absolute; top: 15px; right: 20px; font-size: 24px; cursor: pointer; color: #58a6ff; }
-        .legal-box { background: #0d1117; padding: 15px; border-radius: 5px; margin: 15px 0; border-left: 4px solid #58a6ff; }
-        h2 { color: #58a6ff; font-size: 18px; border-bottom: 1px solid #30363d; padding-bottom: 5px; }
+        h1 { color: #58a6ff; font-size: 20px; border-bottom: 1px solid #30363d; padding-bottom: 8px; margin-top: 0; }
+        h2 { color: #58a6ff; font-size: 16px; margin: 20px 0 10px 0; }
+        ul { padding-left: 20px; margin-bottom: 25px; }
+        li { margin-bottom: 12px; }
+        
+        /* Кнопки принятия условий */
+        .modal-buttons { text-align: right; margin-top: 20px; border-top: 1px solid #30363d; padding-top: 15px; }
+        .btn-legal { padding: 8px 16px; border-radius: 6px; font-size: 14px; cursor: pointer; border: none; margin-left: 10px; font-weight: bold; }
+        .btn-accept { background: #238636; color: #ffffff; }
+        .btn-accept:hover { background: #2ea043; }
+        .btn-decline { background: #21262d; color: #f0f6fc; border: 1px solid #30363d; }
+        .btn-decline:hover { background: #30363d; }
 
-        /* Контейнер для кружка, встроенный в текст */
+        /* Контейнер для кружка палитры */
         .inline-color-picker-wrapper {
             display: inline-flex;
             align-items: center;
             vertical-align: middle;
             margin-left: 10px;
             background: rgba(255, 255, 255, 0.1);
-            padding: 4px;
+            padding: 3px;
             border-radius: 50%;
-            box-shadow: 0 2px 8px rgba(0,0,0,0.4);
+            box-shadow: 0 2px 6px rgba(0,0,0,0.4);
             transition: transform 0.2s ease;
         }
         .inline-color-picker-wrapper:hover {
             transform: scale(1.1);
         }
 
-        /* Сам круглый инпут выбора цвета */
+        /* Инпут выбора цвета */
         .round-picker {
             -webkit-appearance: none;
             -moz-appearance: none;
             appearance: none;
-            width: 28px;
-            height: 28px;
+            width: 24px;
+            height: 24px;
             background: transparent;
             border: none;
             cursor: pointer;
@@ -68,7 +78,7 @@
     `;
     document.head.appendChild(style);
 
-    // 2. Создаем футер
+    // 2. Создаем футер страницы
     const footer = document.createElement('footer');
     footer.className = 'universal-legal-footer';
     footer.innerHTML = `
@@ -78,34 +88,35 @@
     `;
     document.body.appendChild(footer);
 
-    // 3. Создаем модальное окно с текстом (кружок добавлен внутрь заголовка H2 третьей секции)
+    // 3. Создаем новое модальное окно (Кружок встроен в заголовок рядом с Datenschutz)
     const modal = document.createElement('div');
     modal.id = 'legal-modal';
     modal.innerHTML = `
         <div class="modal-content">
             <span class="close-modal" id="close-legal">&times;</span>
-            <h1>Rechtliche Hinweise</h1>
+            <h1>Rechtliche Bestätigung</h1>
+            <p>Sie nutzen gerade das Projekt: <strong>Sterm</strong></p>
             
-            <h2>1. Impressum</h2>
-            <div class="legal-box">
-                <strong>Anbieter:</strong> Maksym Didukh<br>
-                Johannes-Rieden-Straße 1, 56599 Leutesdorf, Deutschland<br>
-                <strong>Kontakt:</strong> didukh.maxim@gmail.com | +380992441324
-            </div>
-
-            <h2>2. Haftungsausschluss (Disclaimer)</h2>
-            <p>Trotz sorgfältiger inhaltlicher Kontrolle übernehmen wir keine Haftung für die Inhalte externer Links. Für den Inhalt der verlinkten Seiten sind ausschließlich deren Betreiber verantwortlich.</p>
-            <p><strong>Nutzergenerierte Inhalte:</strong> Wir distанциируемся ausdrücklich von unzulässigen oder anstößigen Inhalten, die durch Nutzer (z.B. in DrawingTogether oder Chats) erstellt werden könnten. Solche Inhalte werden bei Kenntnisnahme sofort entfernt.</p>
-
             <h2>
-                3. Datenschutzerklärung
+                Impressum | Datenschutz
                 <span class="inline-color-picker-wrapper">
                     <input type="color" id="bgPicker" class="round-picker" title="Выбрать цвет фона">
                 </span>
             </h2>
-            <p><strong>Hosting:</strong> Diese Webseite wird über Netlify Inc. gehostet. Hierbei werden technisch notwendige Daten (IP-Adresse) in Logfiles verarbeitet.</p>
-            <p><strong>Interaktive Funktionen:</strong> In 3D-Anwendungen und Chats werden Ihre Eingaben (Zeichnungen, Texte) zur Echtzeit-Synchronisation in einer Datenbank verarbeitet und sind für andere Nutzer sichtbar.</p>
-            <p><strong>Ihre Rechte:</strong> Sie haben das Recht auf Auskunft, Berichtigung und Löschung Ihrer Daten gemäß DSGVO.</p>
+            
+            <ul>
+                <li><strong>Inhalte:</strong> Nutzer können Inhalte (Texte, Zeichnungen, Nachrichten) erstellen. Diese können im Rahmen der Funktionalität gespeichert werden.</li>
+                <li><strong>Externe Inhalte:</strong> Einige Projekte können externe Webseiten oder Dienste einbinden. Für deren Inhalte sind die jeweiligen Betreiber verantwortlich.</li>
+                <li><strong>Verhaltensregeln:</strong> Die Nutzung für rechtswidrige, beleidigende oder schädliche Inhalte ist untersagt.</li>
+                <li><strong>Datenverarbeitung:</strong> Es können technische Daten (z. B. IP-Adresse, Browser, Zeitstempel) sowie LocalStorage-Daten zur Funktion gespeichert werden.</li>
+            </ul>
+            
+            <p>Stimmen Sie den Bedingungen für Sterm zu?</p>
+            
+            <div class="modal-buttons">
+                <button class="btn-legal btn-decline" id="decline-legal">Ablehnen</button>
+                <button class="btn-legal btn-accept" id="accept-legal">Akzeptieren</button>
+            </div>
         </div>
     `;
     document.body.appendChild(modal);
@@ -127,9 +138,21 @@
         localStorage.setItem('siteBackgroundColor', event.target.value);
     });
 
-    // 5. Логика открытия/закрытия модального окна
+    // 5. Логика кнопок и открытия/закрытия модального окна
     document.getElementById('open-legal').onclick = () => modal.style.display = 'block';
     document.getElementById('close-legal').onclick = () => modal.style.display = 'none';
+    
+    // Действия при нажатии на кнопки внутри модалки
+    document.getElementById('accept-legal').onclick = () => {
+        console.log('Пользователь принял условия Sterm');
+        modal.style.display = 'none';
+    };
+    document.getElementById('decline-legal').onclick = () => {
+        console.log('Пользователь отклонил условия Sterm');
+        modal.style.display = 'none';
+    };
+
     window.onclick = (event) => { if (event.target == modal) modal.style.display = 'none'; };
 })();
-</script>
+        </script>
+        
