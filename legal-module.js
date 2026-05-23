@@ -1,37 +1,50 @@
 (function() {
     const projectName = document.title || "Maksym Didukh Project";
     const contactEmail = "didukh.maxim@gmail.com";
-    const globalStorageKey = 'siteThemeHue';
+    const globalStorageKey = 'siteThemeUniversalColor'; // Уникальный ключ для LocalStorage
 
-    let isDefaultDark = false;
-    
-    function detectSiteTheme() {
-        if (!document.body) return;
-        const bodyBg = window.getComputedStyle(document.body).backgroundColor;
-        const rgb = bodyBg.match(/\d+/g);
-        if (rgb && rgb.length >= 3) {
-            const hsp = Math.sqrt(0.299 * (rgb[0] * rgb[0]) + 0.587 * (rgb[1] * rgb[1]) + 0.114 * (rgb[2] * rgb[2]));
-            isDefaultDark = hsp <= 127.5;
-        }
-    }
+    let isAccepted = false;
 
+    // 1. Инъекция адаптивных стилей
     const styleId = 'dm-styles-integrated';
     if (!document.getElementById(styleId)) {
         const style = document.createElement('style');
         style.id = styleId;
         style.innerHTML = `
-            /* Глобальный фильтр на корень сайта — теперь сработает ВЕЗДЕ */
-            html {
-                filter: hue-rotate(var(--theme-hue, 0deg)) saturate(var(--theme-saturation, 100%)) !important;
-                transition: filter 0.15s ease !important;
+            /* Перекрашивание главных контейнеров */
+            html, body {
+                background-color: var(--u-bg) !important;
+                color: var(--u-text) !important;
+                transition: background-color 0.2s ease, color 0.2s ease !important;
             }
 
-            /* Магический разворот фильтра для плагина — кнопки и текст НЕ поплывут по цвету */
-            #dm-legal-consent, .dm-universal-footer {
-                filter: hue-rotate(calc(-1 * var(--theme-hue, 0deg))) !important;
+            /* Умное адаптивное окрашивание блоков сайта (не ломает структуру, но меняет тему) */
+            body div:not([id^="dm-"]):not([class^="dm-"]), 
+            body section, body article, body header, body footer:not(.dm-universal-footer), 
+            body main, body nav, body aside, body card {
+                background-color: var(--u-block-bg) !important;
+                color: var(--u-text) !important;
+                border-color: var(--u-border) !important;
             }
 
-            /* Изолированные стили служебного интерфейса */
+            /* Контроль читаемости текста стороннего сайта */
+            body p, body span, body li, body th, body td, body label, body small, body time {
+                color: var(--u-text-muted) !important;
+            }
+            body h1, body h2, body h3, body h4, body h5, body h6, body strong, body b {
+                color: var(--u-text) !important;
+            }
+            body a:not([class^="dm-"]) {
+                color: var(--u-link) !important;
+                text-decoration: underline !important;
+            }
+            body button:not([class^="dm-"]), body input:not([class^="dm-"]), body select:not([class^="dm-"]) {
+                background-color: var(--u-block-bg) !important;
+                color: var(--u-text) !important;
+                border: 1px solid var(--u-border) !important;
+            }
+
+            /* ИЗОЛИРОВАННЫЕ СТИЛИ СЛУЖЕБНОГО ИНТЕРФЕЙСА (Полный сброс) */
             #dm-legal-consent, .dm-universal-footer {
                 all: initial !important;
                 font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif !important;
@@ -102,52 +115,77 @@
                 width: 18px !important; height: 18px !important; background: transparent !important; border: none !important; cursor: pointer !important; border-radius: 50% !important; display: block !important;
             }
             .dm-round-picker::-webkit-color-swatch-wrapper { padding: 0 !important; }
-            .dm-round-picker::-webkit-color-swatch { border: 1px solid #ffffff !important; border-radius: 50% !important; background: conic-gradient(red, yellow, lime, aqua, blue, magenta, red) !important; }
-            .dm-round-picker::-moz-color-swatch { border: 1px solid #ffffff !important; border-radius: 50% !important; background: conic-gradient(red, yellow, lime, aqua, blue, magenta, red) !important; }
+            .dm-round-picker::-webkit-color-swatch { border: 1px solid #ffffff !important; border-radius: 50% !important; }
+            .dm-round-picker::-moz-color-swatch { border: 1px solid #ffffff !important; border-radius: 50% !important; }
 
             @media (max-height: 250px) { .dm-universal-footer { position: static !important; } }
         `;
         (document.head || document.documentElement).appendChild(style);
     }
 
-    let isAccepted = false;
-
-    function updateThemeFromHex(hexColor) {
+    // 2. Генератор контрастной адаптивной темы (Светлая / Темная / Цветная)
+    function applyUniversalTheme(hexColor) {
         const shorthandRegex = /^#?([a-f\d])([a-f\d])([a-f\d])$/i;
         let hex = hexColor.replace(shorthandRegex, (m, r, g, b) => r + r + g + g + b + b);
         let result = /^#?([a-f\d]{2})([a-f\d]{2})([a-f\d]{2})$/i.exec(hex);
         if (!result) return;
 
-        let r = parseInt(result[1], 16) / 255;
-        let g = parseInt(result[2], 16) / 255;
-        let b = parseInt(result[3], 16) / 255;
+        let r = parseInt(result[1], 16);
+        let g = parseInt(result[2], 16);
+        let b = parseInt(result[3], 16);
 
-        let max = Math.max(r, g, b), min = Math.min(r, g, b);
-        let h, s, l = (max + min) / 2;
+        // Расчет яркости по формуле HSP
+        let hsp = Math.sqrt(0.299 * (r * r) + 0.587 * (g * g) + 0.114 * (b * b));
+        
+        let textColor, textMuted, blockBg, borderStyle, linkColor;
 
-        if (max === min) {
-            h = s = 0;
+        if (hsp > 200) { 
+            // ─── ЯРКАЯ СВЕТЛАЯ ТЕМА (например, Белый фон) ───
+            textColor = '#0e1116';
+            textMuted = '#48525c';
+            blockBg = 'rgba(0, 0, 0, 0.04)'; // Легкое затемнение для внутренних блоков карточек
+            borderStyle = 'rgba(0, 0, 0, 0.12)';
+            linkColor = '#0969da';
+        } else if (hsp < 40) {
+            // ─── ГЛУБОКАЯ ТЕМНАЯ ТЕМА (например, Черный фон) ───
+            textColor = '#ffffff';
+            textMuted = '#919eab';
+            blockBg = 'rgba(255, 255, 255, 0.06)'; // Легкое осветление внутренних блоков
+            borderStyle = 'rgba(255, 255, 255, 0.15)';
+            linkColor = '#58a6ff';
         } else {
-            let d = max - min;
-            s = l > 0.5 ? d / (2 - max - min) : d / (max + min);
-            switch (max) {
-                case r: h = (g - b) / d + (g < b ? 6 : 0); break;
-                case g: h = (b - r) / d + 2; break;
-                case b: h = (r - g) / d + 4; break;
+            // ─── ЛЮБОЙ ДРУГОЙ ЦВЕТ ИЗ ПАЛИТРЫ (Синий, красный, зеленый и т.д.) ───
+            // Если выбран промежуточный цвет, адаптивно подстраиваем внутренние блоки
+            if (hsp > 127.5) {
+                // Цвет ближе к светлому
+                textColor = '#05070a';
+                textMuted = 'rgba(0, 0, 0, 0.7)';
+                blockBg = 'rgba(0, 0, 0, 0.07)';
+                borderStyle = 'rgba(0, 0, 0, 0.15)';
+                linkColor = '#003d99';
+            } else {
+                // Цвет ближе к темному
+                textColor = '#ffffff';
+                textMuted = 'rgba(255, 255, 255, 0.75)';
+                blockBg = 'rgba(255, 255, 255, 0.09)';
+                borderStyle = 'rgba(255, 255, 255, 0.2)';
+                linkColor = '#9cd4ff';
             }
-            h /= 6;
         }
 
-        const degrees = Math.round(h * 360);
-        
+        // Запись переменных в документ
         const root = document.documentElement;
-        root.style.setProperty('--theme-hue', `${degrees}deg`);
-        root.style.setProperty('--theme-saturation', `${Math.max(s * 100, 40)}%`);
+        root.style.setProperty('--u-bg', hexColor);
+        root.style.setProperty('--u-text', textColor);
+        root.style.setProperty('--u-text-muted', textMuted);
+        root.style.setProperty('--u-block-bg', blockBg);
+        root.style.setProperty('--u-border', borderStyle);
+        root.style.setProperty('--u-link', linkColor);
     }
 
     function enforceSavedColor() {
-        const savedColor = localStorage.getItem(globalStorageKey) || '#58a6ff';
-        updateThemeFromHex(savedColor);
+        const savedColor = localStorage.getItem(globalStorageKey) || '#0d1117'; // По умолчанию темный GitHub-цвет
+        applyUniversalTheme(savedColor);
         
         const picker = document.getElementById('dmBgPicker');
         if (picker && picker.value !== savedColor) {
@@ -155,13 +193,12 @@
         }
     }
 
-    const initColor = localStorage.getItem(globalStorageKey) || '#58a6ff';
-    updateThemeFromHex(initColor);
+    // Первичная инициализация цвета до рендеринга интерфейса
+    const initColor = localStorage.getItem(globalStorageKey) || '#0d1117';
+    applyUniversalTheme(initColor);
 
     function mount() {
         if (isAccepted || document.getElementById('dm-legal-consent')) return;
-        detectSiteTheme();
-
         document.documentElement.classList.add('dm-lock-hard');
 
         const modal = document.createElement('div');
@@ -211,7 +248,7 @@
             <a href="https://dmamax.netlify.app/impressum" target="_blank">Impressum</a> | 
             <a href="https://dmamax.netlify.app/datenschutz" target="_blank">Datenschutz</a>
             <span class="dm-inline-picker-wrapper">
-                <input type="color" id="dmBgPicker" class="dm-round-picker" title="Design-Thema für alle Seiten ändern">
+                <input type="color" id="dmBgPicker" class="dm-round-picker" title="Hintergrundfarbe für alle Seiten ändern">
             </span>
         `;
         document.documentElement.appendChild(footer);
@@ -223,21 +260,21 @@
         const picker = document.getElementById('dmBgPicker');
         if (!picker) return;
 
-        picker.value = localStorage.getItem(globalStorageKey) || '#58a6ff';
+        picker.value = localStorage.getItem(globalStorageKey) || '#0d1117';
 
         picker.addEventListener('input', function(event) {
-            updateThemeFromHex(event.target.value);
+            applyUniversalTheme(event.target.value);
         });
 
         picker.addEventListener('change', function(event) {
             localStorage.setItem(globalStorageKey, event.target.value);
-            updateThemeFromHex(event.target.value);
+            applyUniversalTheme(event.target.value);
         });
     }
 
     window.addEventListener('storage', function(event) {
         if (event.key === globalStorageKey && event.newValue) {
-            updateThemeFromHex(event.newValue);
+            applyUniversalTheme(event.newValue);
         }
     });
 
@@ -247,7 +284,6 @@
         } else {
             addFooter();
         }
-        detectSiteTheme();
         enforceSavedColor();
     }, 1000);
 
@@ -257,4 +293,4 @@
         mount();
     }
 })();
-            
+        
