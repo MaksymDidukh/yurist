@@ -6,38 +6,48 @@
     const globalRandomKey = 'siteThemeRandomAccent'; 
     const DEFAULT_BLUE_COLOR = '#0c162d';
 
-    // 1. СТИЛИ (Базовое оформление + защита геометрии + обтекаемый Impressum)
+    // 1. СТИЛИ (Базовое оформление + динамические переменные фона и текста)
     const styleId = 'dm-styles-integrated';
     if (!document.getElementById(styleId)) {
         const style = document.createElement('style');
         style.id = styleId;
         style.innerHTML = `
             /* ГЛОБАЛЬНЫЕ НАСТРОЙКИ ТЕМЫ ДЛЯ ВСЕХ СТРАНИЦ */
-            body {
+            html, body {
                 background-color: var(--theme-bg, ${DEFAULT_BLUE_COLOR}) !important;
                 color: var(--theme-text) !important;
                 transition: background-color 0.2s ease, color 0.2s ease !important;
             }
-            /* Авто-применение темы к стандартным элементам сайта */
-            body p, body span, body li, body div:not([class^="dm-"]):not([id^="dm-"]) { 
+            
+            /* Применение выбранного пользователем фона к блокам сайта с учетом прозрачности */
+            body div:not([class^="dm-"]):not([id^="dm-"]), 
+            body section, body article, body header, body footer:not(.dm-universal-footer), 
+            body main, body nav, body aside, body form {
+                background-color: var(--theme-block-bg) !important;
+                border-color: var(--theme-border) !important;
+                transition: background-color 0.2s ease, border-color 0.2s ease !important;
+            }
+
+            /* Авто-применение темы к стандартным элементам текста */
+            body p, body span, body li, body div:not([class^="dm-"]):not([id^="dm-"]), body td, body label { 
                 color: var(--theme-text-muted, var(--theme-text)); 
             }
-            body h1, body h2, body h3, body h4, body h5, body h6 { 
+            body h1, body h2, body h3, body h4, body h5, body h6, body strong, body b { 
                 color: var(--theme-accent, var(--theme-text)); 
             }
             body a:not([class^="dm-"]) { 
                 color: var(--theme-accent); 
             }
-            body button:not([class^="dm-"]), body input:not([class^="dm-"]):not([id^="dm-"]) {
+            body button:not([class^="dm-"]), body input:not([class^="dm-"]):not([id^="dm-"]), body select:not([class^="dm-"]) {
                 background-color: transparent !important;
                 border: 2px solid var(--theme-accent) !important;
                 color: var(--theme-text) !important;
                 border-radius: 4px !important;
             }
 
-            /* ЖЁСТКОЕ СОХРАНЕНИЕ ПОЛОЖЕНИЯ ЭЛЕМЕНТОВ ДЛЯ РАНДОМА */
+            /* Защита геометрии для элементов под воздействием рандома */
             .dm-random-applied {
-                transition: color 0.2s ease, border-color 0.2s ease, box-shadow 0.2s ease !important;
+                transition: color 0.2s ease, border-color 0.2s ease !important;
             }
 
             /* Изолированные стили служебного интерфейса */
@@ -47,42 +57,25 @@
                 box-sizing: border-box !important;
             }
             .dm-lock-hard {
-                overflow: hidden !important;
-                height: 100vh !important;
-                width: 100vw !important;
-                position: fixed !important;
+                overflow: hidden !important; height: 100vh !important; width: 100vw !important; position: fixed !important;
             }
             #dm-legal-consent {
                 position: fixed !important; top: 0 !important; left: 0 !important;
                 width: 100vw !important; height: 100vh !important;
-                background: rgba(10, 10, 12, 0.98) !important;
-                z-index: 2147483647 !important;
+                background: rgba(10, 10, 12, 0.98) !important; z-index: 2147483647 !important;
                 display: flex !important; align-items: center !important; justify-content: center !important;
-                backdrop-filter: blur(25px) !important;
-                padding: 10px !important; 
+                backdrop-filter: blur(25px) !important; padding: 10px !important; 
             }
             .dm-consent-box {
-                background: #161b22 !important; color: #c9d1d9 !important; 
-                padding: 20px 15px !important;
-                border-radius: 12px !important; 
-                max-width: 550px !important; width: 100% !important;
-                max-height: 90vh !important;
-                overflow-y: auto !important;
-                border: 1px solid #30363d !important; text-align: center !important;
-                box-shadow: 0 20px 60px rgba(0,0,0,1) !important;
+                background: #161b22 !important; color: #c9d1d9 !important; padding: 20px 15px !important; border-radius: 12px !important; 
+                max-width: 550px !important; width: 100% !important; max-height: 90vh !important; overflow-y: auto !important;
+                border: 1px solid #30363d !important; text-align: center !important; box-shadow: 0 20px 60px rgba(0,0,0,1) !important;
             }
-            .dm-btn-group { 
-                display: flex !important; 
-                flex-wrap: wrap !important;
-                gap: 10px !important; 
-                justify-content: center !important; 
-                margin-top: 20px !important; 
-            }
+            .dm-btn-group { display: flex !important; flex-wrap: wrap !important; gap: 10px !important; justify-content: center !important; margin-top: 20px !important; }
             .dm-btn {
                 background: #238636 !important; color: #fff !important; border: none !important;
                 padding: 12px 20px !important; border-radius: 6px !important; cursor: pointer !important;
-                font-weight: bold !important; font-size: 14px !important; transition: background 0.2s !important;
-                flex: 1 1 120px !important;
+                font-weight: bold !important; font-size: 14px !important; transition: background 0.2s !important; flex: 1 1 120px !important;
             }
             .dm-btn:hover { background: #2ea043 !important; }
             .dm-btn-secondary { background: #484f58 !important; }
@@ -94,40 +87,22 @@
                 background: rgba(13, 17, 23, 0.96) !important; color: #8b949e !important; text-align: center !important;
                 padding: 8px 12px !important; font-size: 11px !important; z-index: 2147483646 !important;
                 border-top: 1px solid #30363d !important; 
-                display: flex !important;
-                align-items: center !important;
-                justify-content: center !important;
-                gap: 15px !important;
-                flex-wrap: wrap !important;
+                display: flex !important; align-items: center !important; justify-content: center !important; gap: 15px !important; flex-wrap: wrap !important;
             }
 
-            /* ИЗОЛИРОВАННЫЙ ОБТЕКАЕМЫЙ БЛОК IMPRESSUM / DATENSCHUTZ */
+            /* ИЗОЛИРОВАННАЯ ОБТЕКАЕМАЯ КАПСУЛА IMPRESSUM */
             .dm-impressum-capsule {
-                display: inline-flex !important;
-                align-items: center !important;
-                gap: 8px !important;
-                background: rgba(255, 255, 255, 0.05) !important;
-                padding: 3px 12px !important;
-                border-radius: 20px !important; /* Форма скругленной капсулы */
-                border: 1px solid rgba(255, 255, 255, 0.1) !important;
-                flex-shrink: 0 !important;
+                display: inline-flex !important; align-items: center !important; gap: 8px !important;
+                background: rgba(255, 255, 255, 0.05) !important; padding: 3px 12px !important;
+                border-radius: 20px !important; border: 1px solid rgba(255, 255, 255, 0.1) !important; flex-shrink: 0 !important;
             }
             .dm-impressum-capsule a { 
-                color: #58a6ff !important; 
-                text-decoration: none !important; 
-                font-weight: bold !important; 
-                margin: 0 !important;
-                transition: color 0.15s ease !important;
+                color: #58a6ff !important; text-decoration: none !important; font-weight: bold !important; margin: 0 !important; transition: color 0.15s ease !important;
             }
-            .dm-impressum-capsule a:hover {
-                color: #79c0ff !important;
-                text-decoration: underline !important;
-            }
+            .dm-impressum-capsule a:hover { color: #79c0ff !important; text-decoration: underline !important; }
             
-            /* СТИЛИ ЭЛЕМЕНТОВ УПРАВЛЕНИЯ */
-            .dm-controls-group {
-                display: inline-flex !important; align-items: center !important; gap: 10px !important; flex-shrink: 0 !important;
-            }
+            /* ЭЛЕМЕНТЫ УПРАВЛЕНИЯ */
+            .dm-controls-group { display: inline-flex !important; align-items: center !important; gap: 10px !important; flex-shrink: 0 !important; }
             .dm-label-text { color: #8b949e !important; font-size: 11px !important; user-select: none !important; }
             
             .dm-inline-picker-wrapper {
@@ -167,8 +142,6 @@
         (document.head || document.documentElement).appendChild(style);
     }
 
-    let isAccepted = false;
-
     function getRandomBrightColor() {
         const h = Math.floor(Math.random() * 360);
         return `hsl(${h}, 95%, 62%)`;
@@ -186,7 +159,7 @@
         return comp ? `rgb(${comp.r}, ${comp.g}, ${comp.b})` : null;
     }
 
-    // УСТАНОВКА ЦВЕТОВЫХ ПЕРЕМЕННЫХ ТЕМЫ
+    // ВЫЧИСЛЕНИЕ ЦВЕТОВЫХ ПЕРЕМЕННЫХ НА ОСНОВЕ ЦВЕТА С ПАЛИТРЫ
     function applyThemeVariables(hexColor) {
         const rgb = hexToRgbComponents(hexColor);
         if (!rgb) return;
@@ -194,15 +167,26 @@
         const hsp = Math.sqrt(0.299 * (rgb.r * rgb.r) + 0.587 * (rgb.g * rgb.g) + 0.114 * (rgb.b * rgb.b));
         let textColor, textColorMuted, accentColor, blockBg, borderStyle;
 
+        // Берем сохраненное значение прозрачности для подмешивания в блоки
+        const opacityVal = localStorage.getItem(globalOpacityKey) || '1.0';
+
         if (hsp > 200) { 
-            textColor = '#0e1116'; textColorMuted = '#48525c'; blockBg = 'rgba(0, 0, 0, 0.04)'; borderStyle = 'rgba(0, 0, 0, 0.12)'; accentColor = '#0969da';
+            textColor = '#0e1116'; textColorMuted = '#48525c'; 
+            blockBg = `rgba(0, 0, 0, ${0.05 * parseFloat(opacityVal)})`; 
+            borderStyle = 'rgba(0, 0, 0, 0.12)'; accentColor = '#0969da';
         } else if (hsp < 40) {
-            textColor = '#ffffff'; textColorMuted = '#919eab'; blockBg = 'rgba(255, 255, 255, 0.06)'; borderStyle = 'rgba(255, 255, 255, 0.15)'; accentColor = '#58a6ff';
+            textColor = '#ffffff'; textColorMuted = '#919eab'; 
+            blockBg = `rgba(255, 255, 255, ${0.07 * parseFloat(opacityVal)})`; 
+            borderStyle = 'rgba(255, 255, 255, 0.15)'; accentColor = '#58a6ff';
         } else {
             if (hsp > 127.5) {
-                textColor = '#05070a'; textColorMuted = 'rgba(0, 0, 0, 0.7)'; blockBg = 'rgba(0, 0, 0, 0.07)'; borderStyle = 'rgba(0, 0, 0, 0.15)'; accentColor = '#003d99';
+                textColor = '#05070a'; textColorMuted = 'rgba(0, 0, 0, 0.7)'; 
+                blockBg = `rgba(0, 0, 0, ${0.08 * parseFloat(opacityVal)})`; 
+                borderStyle = 'rgba(0, 0, 0, 0.15)'; accentColor = '#003d99';
             } else {
-                textColor = '#ffffff'; textColorMuted = 'rgba(255, 255, 255, 0.75)'; blockBg = 'rgba(255, 255, 255, 0.09)'; borderStyle = 'rgba(255, 255, 255, 0.2)'; accentColor = '#9cd4ff';
+                textColor = '#ffffff'; textColorMuted = 'rgba(255, 255, 255, 0.75)'; 
+                blockBg = `rgba(255, 255, 255, ${0.1 * parseFloat(opacityVal)})`; 
+                borderStyle = 'rgba(255, 255, 255, 0.2)'; accentColor = '#9cd4ff';
             }
         }
 
@@ -214,16 +198,16 @@
         root.style.setProperty('--theme-block-bg', blockBg);
         root.style.setProperty('--theme-border', borderStyle);
 
-        // Запуск массового интеллектуального окрашивания
+        // Запуск окрашивания текстов
         colorizeElementsOnSite();
     }
 
-    // ИНТЕЛЛЕКТУАЛЬНЫЙ МАССОВЫЙ РАНДОМ БЕЗ СДВИГОВ ГЕОМЕТРИИ
+    // УМНЫЙ РАНДОМ: КРАСИТ СТРОГО ТЕКСТ И ИНТЕРФЕЙС, НЕ МЕНЯЯ ВЫБРАННЫЙ ФОН БЛОКОВ
     function colorizeElementsOnSite() {
         const isRandomActive = localStorage.getItem(globalRandomKey) === 'true';
 
         if (!isRandomActive) {
-            // Мягкий и чистый сброс inline-стилей рандома
+            // Мягкий сброс кастомного окрашивания текстов
             document.querySelectorAll('.dm-random-applied').forEach(el => {
                 el.classList.remove('dm-random-applied');
                 el.style.removeProperty('color');
@@ -237,36 +221,30 @@
             return;
         }
 
-        // Выбираем только смысловые текстовые контейнеры (блоки меню, параграфы, элементы списков)
         const containers = document.querySelectorAll('body p, body li, body span, body div:not([id^="dm-"]):not([class^="dm-"]), body td, body label');
 
         containers.forEach(container => {
-            // Защита: не трогаем системные окна соглашения и футер
             if (container.closest('.dm-universal-footer') || container.closest('#dm-legal-consent')) return;
 
-            // Ищем наличие кнопок или ссылок внутри контейнера
             const hasInteractive = container.querySelector('a, button, input[type="button"], input[type="submit"]');
 
             if (hasInteractive) {
-                // Если цвет блоку ещё не назначен — создаем один раз устойчивый цвет
-                if (!container.style.getPropertyValue('--dm-custom-mass-color')) {
-                    container.style.setProperty('--dm-custom-mass-color', getRandomBrightColor());
+                if (!container.style.getPropertyValue('--dm-custom-text-color')) {
+                    container.style.setProperty('--dm-custom-text-color', getRandomBrightColor());
                 }
 
-                const massColor = container.style.getPropertyValue('--dm-custom-mass-color');
+                const textColorRandom = container.style.getPropertyValue('--dm-custom-text-color');
 
-                // Помечаем класс-маркер и красим текст
                 container.classList.add('dm-random-applied');
-                container.style.setProperty('color', massColor, 'important');
+                container.style.setProperty('color', textColorRandom, 'important');
 
-                // Массово перекрашиваем все внутренние элементы в этот же оттенок
+                // Окрашиваем исключительно внутренние тексты, ссылки и обводки кнопок
                 const subElements = container.querySelectorAll('a, button, h1, h2, h3, h4, h5, h6, span, p, li, strong, b, input, select');
                 subElements.forEach(child => {
-                    child.style.setProperty('color', massColor, 'important');
+                    child.style.setProperty('color', textColorRandom, 'important');
                     
-                    // Рамкам кнопок и полей ввода меняем только цвет border, не сдвигая ширину (без inline-block)
                     if (child.tagName.toLowerCase() === 'button' || child.tagName.toLowerCase() === 'input' || child.tagName.toLowerCase() === 'select') {
-                        child.style.setProperty('border-color', massColor, 'important');
+                        child.style.setProperty('border-color', textColorRandom, 'important');
                     }
                 });
             }
@@ -274,20 +252,9 @@
     }
 
     function applyOpacity(val) {
-        document.documentElement.style.setProperty('--theme-opacity', val);
-        // Применяем прозрачность к оберткам сайта
-        const styleWrapperId = 'dm-opacity-apply-style';
-        let styleEl = document.getElementById(styleWrapperId);
-        if (!styleEl) {
-            styleEl = document.createElement('style');
-            styleEl.id = styleWrapperId;
-            document.head.appendChild(styleEl);
-        }
-        styleEl.innerHTML = `
-            body div:not([id^="dm-"]):not([class^="dm-"]), body section, body article, body form {
-                opacity: ${val} !important;
-            }
-        `;
+        localStorage.setItem(globalOpacityKey, val);
+        // Пересчитываем переменные темы, так как прозрачность подмешивается в фоны блоков
+        applyThemeVariables(localStorage.getItem(globalStorageKey) || DEFAULT_BLUE_COLOR);
     }
 
     function enforceSavedColor() {
@@ -299,7 +266,6 @@
         if (picker && picker.value !== savedColor) picker.value = savedColor;
 
         const savedOpacity = localStorage.getItem(globalOpacityKey) || '1.0';
-        applyOpacity(savedOpacity);
         const slider = document.getElementById('dmOpacitySlider');
         if (slider && slider.value !== savedOpacity) slider.value = savedOpacity;
 
@@ -308,7 +274,6 @@
         if (checkbox && checkbox.checked !== isRandomActive) checkbox.checked = isRandomActive;
     }
 
-    // Первичный запуск до монтирования DOM
     const initColor = localStorage.getItem(globalStorageKey) || DEFAULT_BLUE_COLOR;
     applyThemeVariables(initColor);
 
@@ -331,7 +296,7 @@
                 <div style="text-align:left !important; background:#0d1117 !important; padding:15px !important; border-radius:8px !important; border-left:4px solid #58a6ff !important; font-size:12.5px !important; line-height:1.6 !important; color:#c9d1d9 !important; margin-bottom:20px !important;">
                     • <b>Inhalte:</b> Nutzer können Inhalte (Texte, Zeichnungen, Nachrichten) erstellen. Diese können im Rahmen der Funktionalität gespeichert werden.<br><br>
                     • <b>Externe Inhalte:</b> Einige Projekte können externe Webseiten oder Dienste einbinden. Für deren Inhalte sind die jeweiligen Betreiber verantwortlich.<br><br>
-                    • <b>Verhaltensregeln:</b> Die Nutzung für rechtswidrige, beleidigende oder schädliche Inhalte ist untersagt.<br><br>
+                    • <b>Verhaltensregeln:</b> Die Nutzung для rechtswidrige, beleidigende oder schädliche Inhalte ist untersagt.<br><br>
                     • <b>Datenverarbeitung:</b> Es können technische Daten sowie LocalStorage-Daten zur Funktion gespeichert werden.
                 </div>
                 <p style="color:#f85149 !important; font-weight:bold !important; margin:0 0 15px 0 !important; font-size:14px !important; background:none !important;">
@@ -408,10 +373,6 @@
         if (slider) {
             slider.value = localStorage.getItem(globalOpacityKey) || '1.0';
             slider.addEventListener('input', (e) => applyOpacity(e.target.value));
-            slider.addEventListener('change', (e) => {
-                localStorage.setItem(globalOpacityKey, e.target.value);
-                applyOpacity(e.target.value);
-            });
         }
 
         if (checkbox) {
@@ -429,7 +390,6 @@
                 localStorage.setItem(globalRandomKey, 'false');
                 
                 applyThemeVariables(DEFAULT_BLUE_COLOR);
-                applyOpacity('1.0');
                 
                 if (picker) picker.value = DEFAULT_BLUE_COLOR;
                 if (slider) slider.value = '1.0';
