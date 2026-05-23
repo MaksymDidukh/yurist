@@ -3,13 +3,13 @@
     const contactEmail = "didukh.maxim@gmail.com";
     const globalStorageKey = 'siteThemeUniversalColor';
     const globalOpacityKey = 'siteThemeOpacity';
-    const globalRandomKey = 'siteThemeRandomAccent'; // Состояние галочки рандома
+    const globalRandomKey = 'siteThemeRandomAccent'; 
 
     const DEFAULT_BLUE_COLOR = '#0c162d'; 
 
     let isAccepted = false;
 
-    // 1. Инъекция базовых стилей темы
+    // 1. Инъекция стилей темы
     const styleId = 'dm-styles-integrated';
     if (!document.getElementById(styleId)) {
         const style = document.createElement('style');
@@ -33,23 +33,21 @@
                 transition: opacity 0.15s ease !important;
             }
 
-            /* Контроль читаемости базовых текстов стороннего сайта */
+            /* Дефолтный контроль читаемости текстов стороннего сайта */
             body p, body span, body li, body th, body td, body label, body small, body time {
                 color: var(--u-text-muted) !important;
             }
-            
-            /* Дефолтные стили для ссылок (переопределяются скриптом в режиме рандома) */
+            body h1, body h2, body h3, body h4, body h5, body h6, body strong, body b {
+                color: var(--u-text) !important;
+            }
             body a:not([class^="dm-"]) {
                 color: var(--u-link-default, #58a6ff) !important;
                 text-decoration: underline !important;
             }
-            
-            /* Дефолтные стили для кнопок и инпутов */
             body button:not([class^="dm-"]), body input:not([class^="dm-"]), body select:not([class^="dm-"]) {
                 background-color: var(--u-block-bg) !important;
                 color: var(--u-text) !important;
                 border: 2px solid var(--u-border) !important;
-                transition: border-color 0.2s, color 0.2s !important;
             }
 
             /* ИЗОЛИРОВАННЫЕ СТИЛИ СЛУЖЕБНОГО ИНТЕРФЕЙСА (Полный сброс) */
@@ -142,13 +140,13 @@
         (document.head || document.documentElement).appendChild(style);
     }
 
-    // Вспомогательная функция для генерации яркого, сочного цвета (HSL модель)
+    // Вспомогательная генерация сочного случайного цвета (HSL)
     function getRandomBrightColor() {
         const h = Math.floor(Math.random() * 360);
-        return `hsl(${h}, 95%, 60%)`;
+        return `hsl(${h}, 95%, 62%)`;
     }
 
-    // 2. Генератор адаптивной базовой темы (HSP алгоритм)
+    // 2. Движок адаптивной базовой темы (HSP алгоритм)
     function applyUniversalTheme(hexColor) {
         const shorthandRegex = /^#?([a-f\d])([a-f\d])([a-f\d])$/i;
         let hex = hexColor.replace(shorthandRegex, (m, r, g, b) => r + r + g + g + b + b);
@@ -183,42 +181,59 @@
         root.style.setProperty('--u-border', borderStyle);
         root.style.setProperty('--u-link-default', defaultLinkColor);
 
-        // Запуск процесса раскрашивания элементов контента сайта
+        // Массовое интеллектуальное окрашивание контента
         colorizeElementsOnSite();
     }
 
-    // 3. Функция, которая делает ВСЕ кнопки, ссылки и заголовки разноцветными
+    // 3. Функция массового окрашивания DIV-ов и текстовых блоков, если в них есть ссылки или кнопки
     function colorizeElementsOnSite() {
         const isRandomActive = localStorage.getItem(globalRandomKey) === 'true';
 
-        // Собираем все элементы, которые должны быть цветными
-        const elements = document.querySelectorAll('body a:not([class^="dm-"]), body button:not([class^="dm-"]), body h1, body h2, body h3, body h4, body h5, body h6, body strong');
-
-        elements.forEach(el => {
-            if (isRandomActive) {
-                // Если цвет у элемента уже есть, повторно не перегенерируем, чтобы не мигал интерфейс
-                if (!el.dataset.dmCustomColor) {
-                    const randomColor = getRandomBrightColor();
-                    el.dataset.dmCustomColor = randomColor; // Сохраняем метку цвета в DOM
-                }
-                
-                const assignedColor = el.dataset.dmCustomColor;
-
-                // Разделяем логику покраски в зависимости от типа тега
-                const tagName = el.tagName.toLowerCase();
-                if (tagName === 'a' || tagName.startsWith('h') || tagName === 'strong') {
-                    // Ссылки, заголовки и важный текст красятся в свой яркий цвет
-                    el.style.setProperty('color', assignedColor, 'important');
-                } else if (tagName === 'button') {
-                    // Кнопки получают разноцветную рамку и разноцветный текст
-                    el.style.setProperty('border-color', assignedColor, 'important');
-                    el.style.setProperty('color', assignedColor, 'important');
-                }
-            } else {
-                // Если галочка выключена — полностью очищаем кастомные inline-стили контента
-                el.removeAttribute('data-dm-custom-color');
+        if (!isRandomActive) {
+            // Если рандом выключен — убираем абсолютно все кастомные стили
+            document.querySelectorAll('[data-dm-has-random]').forEach(el => {
+                el.removeAttribute('data-dm-has-random');
                 el.style.removeProperty('color');
                 el.style.removeProperty('border-color');
+            });
+            document.querySelectorAll('body a, body button, body p, body span, body li, body div, body h1, body h2, body h3, body h4, body h5, body h6').forEach(sub => {
+                sub.style.removeProperty('color');
+                sub.style.removeProperty('border-color');
+            });
+            return;
+        }
+
+        // Ищем все потенциальные родительские контейнеры контента (исключая наш футер/модалку)
+        const parents = document.querySelectorAll('body div:not([id^="dm-"]):not([class^="dm-"]), body section, body p, body li, body form, body header, body footer:not(.dm-universal-footer)');
+
+        parents.forEach(parent => {
+            // Проверяем, есть ли прямо внутри этого блока или параграфа ссылка или кнопка
+            const hasInteractive = parent.querySelector('a, button, input[type="button"], input[type="submit"]');
+
+            if (hasInteractive) {
+                // Если блок ещё не получил свой случайный цвет — генерируем его один раз
+                if (!parent.dataset.dmHasRandom) {
+                    parent.dataset.dmHasRandom = getRandomBrightColor();
+                }
+
+                const blockColor = parent.dataset.dmHasRandom;
+
+                // 1. Окрашиваем сам этот div/родительский блок (весь обычный текст внутри него станет цветным)
+                parent.style.setProperty('color', blockColor, 'important');
+
+                // 2. Красим в этот же цвет все внутренние текстовые теги, заголовки, ссылки и кнопки, чтобы они были единой массой
+                const childElements = parent.querySelectorAll('a, button, h1, h2, h3, h4, h5, h6, span, p, li, strong, b');
+                childElements.forEach(child => {
+                    // Исключаем элементы нашей служебной панели, если они туда случайно попали
+                    if (child.closest('.dm-universal-footer') || child.closest('#dm-legal-consent')) return;
+
+                    child.style.setProperty('color', blockColor, 'important');
+                    
+                    if (child.tagName.toLowerCase() === 'button') {
+                        // Кнопкам дополнительно красим обводку в этот же цвет
+                        child.style.setProperty('border-color', blockColor, 'important');
+                    }
+                });
             }
         });
     }
@@ -308,7 +323,7 @@
                 <span class="dm-label-text">Opacity:</span>
                 <input type="range" id="dmOpacitySlider" class="dm-opacity-range" min="0.1" max="1.0" step="0.05" title="Прозрачность блоков">
                 
-                <label class="dm-checkbox-label" title="Включить индивидуальные разноцветные оттенки для ссылок, заголовков и кнопок">
+                <label class="dm-checkbox-label" title="Разукрасить весь текст и контент блоков, содержащих кнопки или ссылки">
                     <input type="checkbox" id="dmRandomCheckbox" class="dm-checkbox-native">
                     <span class="dm-label-text">Рандом</span>
                 </label>
@@ -385,7 +400,7 @@
         }
     });
 
-    // Мониторинг в интервале для перекраски динамически подгружаемых ajax-элементов контента
+    // Регулярно перепроверяем DOM (каждую секунду), чтобы мгновенно разукрасить новые подгруженные Ajax элементы
     setInterval(() => {
         if (!isAccepted) {
             mount();
