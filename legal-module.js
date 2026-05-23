@@ -1,28 +1,35 @@
 (function() {
     const projectName = document.title || "Maksym Didukh Project";
     const contactEmail = "didukh.maxim@gmail.com";
-    const globalStorageKey = 'siteThemeHue';
+    const globalStorageKey = 'siteThemeHue'; // Храним оттенок (hue) вместо жесткого HEX
 
-    // 1. Инъекция безопасных адаптивных стилей
+    // 1. Динамическое определение базовой темы сайта
+    let isDefaultDark = false;
+    
+    function detectSiteTheme() {
+        if (!document.body) return;
+        const bodyBg = window.getComputedStyle(document.body).backgroundColor;
+        const rgb = bodyBg.match(/\d+/g);
+        if (rgb && rgb.length >= 3) {
+            // Рассчитываем яркость фона сайта (HSP)
+            const hsp = Math.sqrt(0.299 * (rgb[0] * rgb[0]) + 0.587 * (rgb[1] * rgb[1]) + 0.114 * (rgb[2] * rgb[2]));
+            isDefaultDark = hsp <= 127.5;
+        }
+    }
+
+    // 2. Инъекция адаптивных и изолированных стилей
     const styleId = 'dm-styles-integrated';
     if (!document.getElementById(styleId)) {
         const style = document.createElement('style');
         style.id = styleId;
         style.innerHTML = `
-            /* Применяем фильтр ТОЛЬКО к контенту сайта, обходя наш интерфейс */
+            /* Применяем фильтр темы ко всему, КРОМЕ нашего интерфейса */
             body > *:not(#dm-legal-consent):not(.dm-universal-footer) {
                 filter: hue-rotate(var(--theme-hue, 0deg)) saturate(var(--theme-saturation, 100%)) !important;
-                transition: filter 0.3s ease !important;
-            }
-            
-            /* Защита картинок и видео внутри контента сайта от искажения */
-            body > *:not(#dm-legal-consent):not(.dm-universal-footer) img, 
-            body > *:not(#dm-legal-consent):not(.dm-universal-footer) video,
-            body > *:not(#dm-legal-consent):not(.dm-universal-footer) iframe {
-                filter: hue-rotate(calc(-1 * var(--theme-hue, 0deg))) !important;
+                transition: filter 0.15s ease !important;
             }
 
-            /* Изолированные стили служебного интерфейса (теперь они стабильны) */
+            /* Изолированные стили служебного интерфейса */
             #dm-legal-consent, .dm-universal-footer {
                 all: initial !important;
                 font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif !important;
@@ -51,12 +58,21 @@
                 border: 1px solid #30363d !important; text-align: center !important;
                 box-shadow: 0 20px 60px rgba(0,0,0,1) !important;
             }
-            .dm-btn-group { display: flex !important; flex-wrap: wrap !important; gap: 10px !important; justify-content: center !important; margin-top: 20px !important; }
+            .dm-btn-group { 
+                display: flex !important; 
+                flex-wrap: nowrap !important; /* Кнопки не разваливаются на две строки */
+                gap: 10px !important; 
+                justify-content: center !important; 
+                margin-top: 20px !important; 
+                width: 100% !important;
+            }
             .dm-btn {
                 background: #238636 !important; color: #fff !important; border: none !important;
                 padding: 12px 20px !important; border-radius: 6px !important; cursor: pointer !important;
                 font-weight: bold !important; font-size: 14px !important; transition: background 0.2s !important;
-                flex: 1 1 120px !important;
+                flex: 1 1 auto !important;
+                flex-shrink: 0 !important; /* Кнопки не будут сжиматься */
+                white-space: nowrap !important; /* Защита текста от переноса */
             }
             .dm-btn:hover { background: #2ea043 !important; }
             .dm-btn-secondary { background: #484f58 !important; }
@@ -65,14 +81,17 @@
             .dm-universal-footer {
                 position: fixed !important; bottom: 0 !important; left: 0 !important; width: 100% !important;
                 background: rgba(13, 17, 23, 0.95) !important; color: #8b949e !important; text-align: center !important;
-                padding: 8px 5px !important; font-size: 11px !important; z-index: 2147483646 !important;
-                border-top: 1px solid #30363d !important; display: flex !important; align-items: center !important; justify-content: center !important; gap: 2px !important; flex-wrap: wrap !important;
+                padding: 8px 10px !important; font-size: 11px !important; z-index: 2147483646 !important;
+                border-top: 1px solid #30363d !important; 
+                display: flex !important; align-items: center !important; justify-content: center !important; 
+                gap: 10px !important; flex-wrap: nowrap !important; /* Футер жестко в одну линию */
             }
-            .dm-universal-footer a { color: #58a6ff !important; text-decoration: none !important; margin: 0 5px !important; font-weight: bold !important; }
+            .dm-universal-footer a { color: #58a6ff !important; text-decoration: none !important; font-weight: bold !important; }
             
             .dm-inline-picker-wrapper {
-                display: inline-flex !important; align-items: center !important; vertical-align: middle !important;
-                margin-left: 5px !important; background: rgba(255, 255, 255, 0.1) !important;
+                display: inline-flex !important; align-items: center !important; 
+                vertical-align: middle !important; flex-shrink: 0 !important; /* Палитра сохраняет круглую форму */
+                background: rgba(255, 255, 255, 0.1) !important;
                 padding: 2px !important; border-radius: 50% !important; transition: transform 0.2s ease !important;
             }
             .dm-inline-picker-wrapper:hover { transform: scale(1.15) !important; background: rgba(255, 255, 255, 0.2) !important; }
@@ -91,7 +110,7 @@
 
     let isAccepted = false;
 
-    // Преобразование HEX-цвета во вращение оттенка (Hue)
+    // Преобразование выбранного HEX-цвета во вращение цветового спектра (Hue)
     function updateThemeFromHex(hexColor) {
         const shorthandRegex = /^#?([a-f\d])([a-f\d])([a-f\d])$/i;
         let hex = hexColor.replace(shorthandRegex, (m, r, g, b) => r + r + g + g + b + b);
@@ -119,6 +138,7 @@
         }
 
         const degrees = Math.round(h * 360);
+        
         const root = document.documentElement;
         root.style.setProperty('--theme-hue', `${degrees}deg`);
         root.style.setProperty('--theme-saturation', `${Math.max(s * 100, 40)}%`);
@@ -134,11 +154,13 @@
         }
     }
 
+    // Инициализация при старте
     const initColor = localStorage.getItem(globalStorageKey) || '#58a6ff';
     updateThemeFromHex(initColor);
 
     function mount() {
         if (isAccepted || document.getElementById('dm-legal-consent')) return;
+        detectSiteTheme();
 
         document.documentElement.classList.add('dm-lock-hard');
 
@@ -155,10 +177,10 @@
                     <a href="https://dmamax.netlify.app/datenschutz" target="_blank" style="color:#58a6ff !important;">Datenschutz</a>
                 </div>
                 <div style="text-align:left !important; background:#0d1117 !important; padding:15px !important; border-radius:8px !important; border-left:4px solid #58a6ff !important; font-size:12.5px !important; line-height:1.6 !important; color:#c9d1d9 !important; margin-bottom:20px !important;">
-                    • <b>Inhalte:</b> Nutzer können Inhalte erstellen. Diese können im Rahmen der Funktionalität gespeichert werden.<br><br>
-                    • <b>Externe Inhalte:</b> Einige Projekte können externe Webseiten или Dienste einbinden.<br><br>
-                    • <b>Verhaltensregeln:</b> Die Nutzung für rechtswidrige Inhalte ist untersagt.<br><br>
-                    • <b>Datenverarbeitung:</b> Technische Daten sowie LocalStorage-Daten могут сохраняться для работы.
+                    • <b>Inhalte:</b> Nutzer können Inhalte (Texte, Zeichnungen, Nachrichten) erstellen. Diese können im Rahmen der Funktionalität gespeichert werden.<br><br>
+                    • <b>Externe Inhalte:</b> Einige Projekte können externe Webseiten oder Dienste einbinden. Für deren Inhalte sind die jeweiligen Betreiber verantwortlich.<br><br>
+                    • <b>Verhaltensregeln:</b> Die Nutzung für rechtswidrige, beleidigende oder schädliche Inhalte ist untersagt.<br><br>
+                    • <b>Datenverarbeitung:</b> Es können technische Daten sowie LocalStorage-Daten zur Funktion gespeichert werden.
                 </div>
                 <p style="color:#f85149 !important; font-weight:bold !important; margin:0 0 15px 0 !important; font-size:14px !important; background:none !important;">
                     Stimmen Sie den Bedingungen für <b>${projectName}</b> zu?
@@ -225,6 +247,15 @@
         } else {
             addFooter();
         }
+        detectSiteTheme();
         enforceSavedColor();
     }, 1000);
-                    
+
+    // Безопасный запуск после рендеринга страницы
+    if (document.readyState === 'loading') {
+        document.addEventListener('DOMContentLoaded', mount);
+    } else {
+        mount();
+    }
+})();
+                        
