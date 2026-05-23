@@ -1,9 +1,8 @@
-
 (function() {
     const projectName = document.title || "Maksym Didukh Project";
     const contactEmail = "didukh.maxim@gmail.com";
 
-    // 1. СТИЛИ (Адаптация под микро-размеры + стилизация палитры)
+    // 1. СТИЛИ (Адаптация под микро-размеры + единая палитра в футере)
     const styleId = 'dm-styles-integrated';
     if (!document.getElementById(styleId)) {
         const style = document.createElement('style');
@@ -34,14 +33,14 @@
                 padding: 20px 15px !important;
                 border-radius: 12px !important; 
                 max-width: 550px !important; width: 100% !important;
-                max-height: 90vh !important; /* Важно для 200px высоты */
-                overflow-y: auto !important;   /* Добавляет скролл если экран мал */
+                max-height: 90vh !important;
+                overflow-y: auto !important;
                 border: 1px solid #30363d !important; text-align: center !important;
                 box-shadow: 0 20px 60px rgba(0,0,0,1) !important;
             }
             .dm-btn-group { 
                 display: flex !important; 
-                flex-wrap: wrap !important; /* Кнопки переносятся на новую строку */
+                flex-wrap: wrap !important;
                 gap: 10px !important; 
                 justify-content: center !important; 
                 margin-top: 20px !important; 
@@ -50,7 +49,7 @@
                 background: #238636 !important; color: #fff !important; border: none !important;
                 padding: 12px 20px !important; border-radius: 6px !important; cursor: pointer !important;
                 font-weight: bold !important; font-size: 14px !important; transition: background 0.2s !important;
-                flex: 1 1 120px !important; /* Кнопки тянутся и переносятся */
+                flex: 1 1 120px !important;
             }
             .dm-btn:hover { background: #2ea043 !important; }
             .dm-btn-secondary { background: #484f58 !important; }
@@ -69,7 +68,7 @@
             }
             .dm-universal-footer a { color: #58a6ff !important; text-decoration: none !important; margin: 0 5px !important; font-weight: bold !important; }
             
-            /* Стилизация контейнера кружка-палитры */
+            /* Контейнер кружка-палитры */
             .dm-inline-picker-wrapper {
                 display: inline-flex !important;
                 align-items: center !important;
@@ -109,7 +108,6 @@
                 background: conic-gradient(red, yellow, lime, aqua, blue, magenta, red) !important;
             }
 
-            /* Скрытие футера если экран слишком низкий, чтобы не мешал кнопкам */
             @media (max-height: 250px) {
                 .dm-universal-footer { position: static !important; }
             }
@@ -119,12 +117,23 @@
 
     let isAccepted = false;
 
-    // Инициализация фонового цвета при загрузке скрипта
-    const storageKey = 'bg_color_' + window.location.pathname;
-    const savedColor = localStorage.getItem(storageKey);
-    if (savedColor) {
-        document.body.style.backgroundColor = savedColor;
+    // ГЛОБАЛЬНЫЙ КЛЮЧ: Один для всех страниц сайта, чтобы цвет синхронизировался везде
+    const globalStorageKey = 'siteBackgroundColor';
+
+    // Сразу же применяем сохраненный цвет (если он есть), чтобы избежать белой вспышки
+    function applySavedColor() {
+        const savedColor = localStorage.getItem(globalStorageKey);
+        if (savedColor && document.body) {
+            document.body.style.backgroundColor = savedColor;
+            
+            // Также обновляем положение ползунка в палитре, если она уже нарисована
+            const picker = document.getElementById('dmBgPicker');
+            if (picker && picker.value !== savedColor) {
+                picker.value = savedColor;
+            }
+        }
     }
+    applySavedColor();
 
     function mount() {
         if (isAccepted || document.getElementById('dm-legal-consent')) return;
@@ -149,15 +158,10 @@
     </div>
 
     <div style="text-align:left !important; background:#0d1117 !important; padding:15px !important; border-radius:8px !important; border-left:4px solid #58a6ff !important; font-size:12.5px !important; line-height:1.6 !important; color:#c9d1d9 !important; margin-bottom:20px !important;">
-
         • <b>Inhalte:</b> Nutzer können Inhalte (Texte, Zeichnungen, Nachrichten) erstellen. Diese können im Rahmen der Funktionalität gespeichert werden.<br><br>
-
         • <b>Externe Inhalte:</b> Einige Projekte können externe Webseiten oder Dienste einbinden. Für deren Inhalte sind die jeweiligen Betreiber verantwortlich.<br><br>
-
-        • <b>Verhaltensregeln:</b> Die Nutzung für rechtswidrige, beleдиниющие oder schädliche Inhalte ist untersagt.<br><br>
-
+        • <b>Verhaltensregeln:</b> Die Nutzung für rechtswidrige, beleidigende oder schädliche Inhalte ist untersagt.<br><br>
         • <b>Datenverarbeitung:</b> Es können technische Daten (z. B. IP-Adresse, Browser, Zeitstempel) sowie LocalStorage-Daten zur Funktion gespeichert werden.
-
     </div>
 
     <p style="color:#f85149 !important; font-weight:bold !important; margin:0 0 15px 0 !important; font-size:14px !important;">
@@ -192,12 +196,11 @@
             <a href="https://dmamax.netlify.app/impressum" target="_blank">Impressum</a> | 
             <a href="https://dmamax.netlify.app/datenschutz" target="_blank">Datenschutz</a>
             <span class="dm-inline-picker-wrapper">
-                <input type="color" id="dmBgPicker" class="dm-round-picker" title="Hintergrundfarbe ändern">
+                <input type="color" id="dmBgPicker" class="dm-round-picker" title="Hintergrundfarbe für alle Seiten ändern">
             </span>
         `;
         document.documentElement.appendChild(footer);
 
-        // Привязываем события изменения цвета после монтирования футера
         setupColorPicker();
     }
 
@@ -205,36 +208,39 @@
         const picker = document.getElementById('dmBgPicker');
         if (!picker) return;
 
-        const currentSaved = localStorage.getItem(storageKey);
+        const currentSaved = localStorage.getItem(globalStorageKey);
         if (currentSaved) {
             picker.value = currentSaved;
         }
 
-        // Изменение цвета в реальном времени при перемещении
+        // Изменение цвета в реальном времени
         picker.addEventListener('input', function(event) {
             document.body.style.backgroundColor = event.target.value;
         });
 
-        // Сохранение выбора в LocalStorage
+        // Сохранение в глобальную память
         picker.addEventListener('change', function(event) {
-            localStorage.setItem(storageKey, event.target.value);
+            localStorage.setItem(globalStorageKey, event.target.value);
         });
     }
 
-    // Интервал для постоянного поддержания элементов
+    // Слушатель событий вкладки: если цвет изменили на другой странице, текущая страница сразу обновит фон
+    window.addEventListener('storage', function(event) {
+        if (event.key === globalStorageKey) {
+            applySavedColor();
+        }
+    });
+
+    // Постоянная проверка в интервале
     setInterval(() => {
         if (!isAccepted) {
             mount();
         } else {
             addFooter();
-            // На всякий случай обновляем цвет, если скрипты страницы сбросили стили body
-            const currentSaved = localStorage.getItem(storageKey);
-            if (currentSaved && document.body.style.backgroundColor !== currentSaved) {
-                document.body.style.backgroundColor = currentSaved;
-            }
         }
+        // Защита: удерживаем выбранный пользователем цвет на странице вопреки сторонним скриптам
+        applySavedColor();
     }, 1000);
 
     mount();
 })();
-
