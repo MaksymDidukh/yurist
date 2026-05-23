@@ -1,28 +1,52 @@
 (function() {
     const projectName = document.title || "Maksym Didukh Project";
     const contactEmail = "didukh.maxim@gmail.com";
-    const globalStorageKey = 'siteThemeUniversalColor';
-    const globalOpacityKey = 'siteThemeOpacity';
-    const globalRandomKey = 'siteThemeRandomAccent'; 
 
-    const DEFAULT_BLUE_COLOR = '#0c162d'; 
+    // ЕДИНЫЙ ГЛОБАЛЬНЫЙ ОБЪЕКТ СОСТОЯНИЯ (Доступен для всех внутренних функций)
+    const themeState = {
+        keys: {
+            bg: 'siteThemeUniversalColor',
+            opacity: 'siteThemeOpacity',
+            random: 'siteThemeRandomAccent'
+        },
+        defaults: {
+            bg: '#0c162d', // Тот самый дефолтный синий цвет
+            opacity: '1.0',
+            random: false
+        },
+        // Метод для получения текущего актуального значения из localStorage или дефолта
+        get(type) {
+            const saved = localStorage.getItem(this.keys[type]);
+            if (saved === null) return this.defaults[type];
+            if (type === 'random') return saved === 'true';
+            return saved;
+        },
+        // Метод для записи нового значения в состояние
+        set(type, value) {
+            localStorage.setItem(this.keys[type], value);
+        },
+        // Полный сброс всех настроек к дефолтным
+        reset() {
+            localStorage.setItem(this.keys.bg, this.defaults.bg);
+            localStorage.setItem(this.keys.opacity, this.defaults.opacity);
+            localStorage.setItem(this.keys.random, this.defaults.random);
+        }
+    };
 
     let isAccepted = false;
 
-    // 1. Инъекция стилей темы
+    // 1. Инъекция адаптивных стилей темы
     const styleId = 'dm-styles-integrated';
     if (!document.getElementById(styleId)) {
         const style = document.createElement('style');
         style.id = styleId;
         style.innerHTML = `
-            /* Принудительная смена фона основы любого сайта */
             html, body {
-                background-color: var(--u-bg, ${DEFAULT_BLUE_COLOR}) !important;
+                background-color: var(--u-bg, ${themeState.defaults.bg}) !important;
                 color: var(--u-text, #ffffff) !important;
                 transition: background-color 0.2s ease, color 0.2s ease !important;
             }
 
-            /* Умное окрашивание блоков с регулируемой прозрачностью */
             body div:not([id^="dm-"]):not([class^="dm-"]), 
             body section, body article, body header, body footer:not(.dm-universal-footer), 
             body main, body nav, body aside, body form {
@@ -33,7 +57,6 @@
                 transition: opacity 0.15s ease !important;
             }
 
-            /* Дефолтный контроль читаемости текстов стороннего сайта */
             body p, body span, body li, body th, body td, body label, body small, body time {
                 color: var(--u-text-muted) !important;
             }
@@ -50,15 +73,13 @@
                 border: 2px solid var(--u-border) !important;
             }
 
-            /* ИЗОЛИРОВАННЫЕ СТИЛИ СЛУЖЕБНОГО ИНТЕРФЕЙСА (Полный сброс) */
+            /* ИЗОЛИРОВАННЫЕ СТИЛИ СЛУЖЕБНОГО ИНТЕРФЕЙСА */
             #dm-legal-consent, .dm-universal-footer {
                 all: initial !important;
                 font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif !important;
                 box-sizing: border-box !important;
             }
-            .dm-lock-hard {
-                overflow: hidden !important; height: 100vh !important; width: 100vw !important; position: fixed !important;
-            }
+            .dm-lock-hard { overflow: hidden !important; height: 100vh !important; width: 100vw !important; position: fixed !important; }
             #dm-legal-consent {
                 position: fixed !important; top: 0 !important; left: 0 !important; width: 100vw !important; height: 100vh !important;
                 background: rgba(10, 10, 12, 0.98) !important; z-index: 2147483647 !important;
@@ -70,9 +91,7 @@
                 max-width: 550px !important; width: 100% !important; max-height: 90vh !important; overflow-y: auto !important;
                 border: 1px solid #30363d !important; text-align: center !important; box-shadow: 0 20px 60px rgba(0,0,0,1) !important;
             }
-            .dm-btn-group { 
-                display: flex !important; gap: 10px !important; justify-content: center !important; margin-top: 20px !important; width: 100% !important;
-            }
+            .dm-btn-group { display: flex !important; gap: 10px !important; justify-content: center !important; margin-top: 20px !important; width: 100% !important; }
             .dm-btn {
                 background: #238636 !important; color: #fff !important; border: none !important;
                 padding: 12px 20px !important; border-radius: 6px !important; cursor: pointer !important;
@@ -87,18 +106,12 @@
                 position: fixed !important; bottom: 0 !important; left: 0 !important; width: 100% !important;
                 background: rgba(13, 17, 23, 0.95) !important; color: #8b949e !important; text-align: center !important;
                 padding: 8px 10px !important; font-size: 11px !important; z-index: 2147483646 !important;
-                border-top: 1px solid #30363d !important; 
-                display: flex !important; align-items: center !important; justify-content: center !important; 
-                gap: 12px !important; flex-wrap: nowrap !important; 
+                border-top: 1px solid #30363d !important; display: flex !important; align-items: center !important; justify-content: center !important; gap: 12px !important; flex-wrap: nowrap !important; 
             }
             .dm-universal-footer a { color: #58a6ff !important; text-decoration: none !important; font-weight: bold !important; }
+            .dm-controls-group { display: inline-flex !important; align-items: center !important; gap: 10px !important; flex-shrink: 0 !important; }
+            .dm-label-text { color: #8b949e !important; font-size: 11px !important; user-select: none !important; }
             
-            .dm-controls-group {
-                display: inline-flex !important; align-items: center !important; gap: 10px !important; flex-shrink: 0 !important;
-            }
-            .dm-label-text {
-                color: #8b949e !important; font-size: 11px !important; user-select: none !important;
-            }
             .dm-inline-picker-wrapper {
                 display: inline-flex !important; align-items: center !important; vertical-align: middle !important; flex-shrink: 0 !important; 
                 background: rgba(255, 255, 255, 0.1) !important; padding: 2px !important; border-radius: 50% !important; transition: transform 0.2s ease !important;
@@ -119,13 +132,8 @@
                 -webkit-appearance: none !important; appearance: none !important;
                 width: 12px !important; height: 12px !important; border-radius: 50% !important; background: #58a6ff !important; cursor: pointer !important;
             }
-
-            .dm-checkbox-label {
-                display: inline-flex !important; align-items: center !important; gap: 4px !important; cursor: pointer !important;
-            }
-            .dm-checkbox-native {
-                cursor: pointer !important; margin: 0 !important; width: 13px !important; height: 13px !important;
-            }
+            .dm-checkbox-label { display: inline-flex !important; align-items: center !important; gap: 4px !important; cursor: pointer !important; }
+            .dm-checkbox-native { cursor: pointer !important; margin: 0 !important; width: 13px !important; height: 13px !important; }
 
             .dm-reset-btn {
                 background: transparent !important; border: none !important; color: #8b949e !important;
@@ -146,7 +154,7 @@
         return `hsl(${h}, 95%, 62%)`;
     }
 
-    // 2. Движок адаптивной базовой темы (HSP алгоритм)
+    // 2. Универсальный движок расчета контрастности (HSP алгоритм)
     function applyUniversalTheme(hexColor) {
         const shorthandRegex = /^#?([a-f\d])([a-f\d])([a-f\d])$/i;
         let hex = hexColor.replace(shorthandRegex, (m, r, g, b) => r + r + g + g + b + b);
@@ -181,57 +189,54 @@
         root.style.setProperty('--u-border', borderStyle);
         root.style.setProperty('--u-link-default', defaultLinkColor);
 
-        // Массовое интеллектуальное окрашивание контента
-        colorizeElementsOnSite();
+        // Запуск массового интеллектуального окрашивания объектов
+        colorizeObjectsOnSite();
     }
 
-    // 3. Функция массового окрашивания DIV-ов и текстовых блоков, если в них есть ссылки или кнопки
-    function colorizeElementsOnSite() {
-        const isRandomActive = localStorage.getItem(globalRandomKey) === 'true';
+    // 3. Превращение DIV-ов со ссылками/кнопками в самостоятельные разноцветные дизайн-объекты
+    function colorizeObjectsOnSite() {
+        const isRandomActive = themeState.get('random');
 
         if (!isRandomActive) {
-            // Если рандом выключен — убираем абсолютно все кастомные стили
-            document.querySelectorAll('[data-dm-has-random]').forEach(el => {
-                el.removeAttribute('data-dm-has-random');
+            // Если режим выключен — безопасно сбрасываем кастомные стили со всех элементов контента
+            document.querySelectorAll('[data-dm-is-object]').forEach(el => {
+                el.removeAttribute('data-dm-is-object');
                 el.style.removeProperty('color');
-                el.style.removeProperty('border-color');
             });
-            document.querySelectorAll('body a, body button, body p, body span, body li, body div, body h1, body h2, body h3, body h4, body h5, body h6').forEach(sub => {
+            document.querySelectorAll('body a, body button, body p, body span, body li, body div, body h1, body h2, body h3, body h4, body h5, body h6, body strong, body b').forEach(sub => {
                 sub.style.removeProperty('color');
                 sub.style.removeProperty('border-color');
             });
             return;
         }
 
-        // Ищем все потенциальные родительские контейнеры контента (исключая наш футер/модалку)
-        const parents = document.querySelectorAll('body div:not([id^="dm-"]):not([class^="dm-"]), body section, body p, body li, body form, body header, body footer:not(.dm-universal-footer)');
+        // Выбираем контейнеры верхнего уровня (исключая системные панели)
+        const contentContainers = document.querySelectorAll('body div:not([id^="dm-"]):not([class^="dm-"]), body section, body p, body li, body form, body header, body footer:not(.dm-universal-footer)');
 
-        parents.forEach(parent => {
-            // Проверяем, есть ли прямо внутри этого блока или параграфа ссылка или кнопка
-            const hasInteractive = parent.querySelector('a, button, input[type="button"], input[type="submit"]');
+        contentContainers.forEach(container => {
+            // Ищем интерактивное наполнение
+            const hasInteractive = container.querySelector('a, button, input[type="button"], input[type="submit"]');
 
             if (hasInteractive) {
-                // Если блок ещё не получил свой случайный цвет — генерируем его один раз
-                if (!parent.dataset.dmHasRandom) {
-                    parent.dataset.dmHasRandom = getRandomBrightColor();
+                // Если объект еще не получил свой цвет — инициализируем его
+                if (!container.dataset.dmIs-object) {
+                    container.dataset.dmIs-object = getRandomBrightColor();
                 }
 
-                const blockColor = parent.dataset.dmHasRandom;
+                const objectColor = container.dataset.dmIs-object;
 
-                // 1. Окрашиваем сам этот div/родительский блок (весь обычный текст внутри него станет цветным)
-                parent.style.setProperty('color', blockColor, 'important');
+                // Массово красим весь текст самого контейнера-объекта
+                container.style.setProperty('color', objectColor, 'important');
 
-                // 2. Красим в этот же цвет все внутренние текстовые теги, заголовки, ссылки и кнопки, чтобы они были единой массой
-                const childElements = parent.querySelectorAll('a, button, h1, h2, h3, h4, h5, h6, span, p, li, strong, b');
-                childElements.forEach(child => {
-                    // Исключаем элементы нашей служебной панели, если они туда случайно попали
+                // Окрашиваем всю массу вложенных элементов в этот же тон
+                const subElements = container.querySelectorAll('a, button, h1, h2, h3, h4, h5, h6, span, p, li, strong, b');
+                subElements.forEach(child => {
                     if (child.closest('.dm-universal-footer') || child.closest('#dm-legal-consent')) return;
 
-                    child.style.setProperty('color', blockColor, 'important');
+                    child.style.setProperty('color', objectColor, 'important');
                     
                     if (child.tagName.toLowerCase() === 'button') {
-                        // Кнопкам дополнительно красим обводку в этот же цвет
-                        child.style.setProperty('border-color', blockColor, 'important');
+                        child.style.setProperty('border-color', objectColor, 'important');
                     }
                 });
             }
@@ -242,31 +247,33 @@
         document.documentElement.style.setProperty('--u-opacity', val);
     }
 
+    // Функция синхронизации и контроля состояния (вызывается каждую секунду)
     function enforceSavedColor() {
-        const savedColor = localStorage.getItem(globalStorageKey) || DEFAULT_BLUE_COLOR;
-        applyUniversalTheme(savedColor);
+        const currentBg = themeState.get('bg');
+        applyUniversalTheme(currentBg);
         
         const picker = document.getElementById('dmBgPicker');
-        if (picker && picker.value !== savedColor) {
-            picker.value = savedColor;
+        if (picker && picker.value !== currentBg) {
+            picker.value = currentBg;
         }
 
-        const savedOpacity = localStorage.getItem(globalOpacityKey) || '1.0';
-        applyOpacity(savedOpacity);
+        const currentOpacity = themeState.get('opacity');
+        applyOpacity(currentOpacity);
         const slider = document.getElementById('dmOpacitySlider');
-        if (slider && slider.value !== savedOpacity) {
-            slider.value = savedOpacity;
+        if (slider && slider.value !== currentOpacity) {
+            slider.value = currentOpacity;
         }
 
-        const isRandomActive = localStorage.getItem(globalRandomKey) === 'true';
+        const currentRandom = themeState.get('random');
         const checkbox = document.getElementById('dmRandomCheckbox');
-        if (checkbox && checkbox.checked !== isRandomActive) {
-            checkbox.checked = isRandomActive;
+        if (checkbox && checkbox.checked !== currentRandom) {
+            checkbox.checked = currentRandom;
         }
     }
 
-    applyUniversalTheme(localStorage.getItem(globalStorageKey) || DEFAULT_BLUE_COLOR);
-    applyOpacity(localStorage.getItem(globalOpacityKey) || '1.0');
+    // Первичная сборка при инициализации страницы
+    applyUniversalTheme(themeState.get('bg'));
+    applyOpacity(themeState.get('opacity'));
 
     function mount() {
         if (isAccepted || document.getElementById('dm-legal-consent')) return;
@@ -323,7 +330,7 @@
                 <span class="dm-label-text">Opacity:</span>
                 <input type="range" id="dmOpacitySlider" class="dm-opacity-range" min="0.1" max="1.0" step="0.05" title="Прозрачность блоков">
                 
-                <label class="dm-checkbox-label" title="Разукрасить весь текст и контент блоков, содержащих кнопки или ссылки">
+                <label class="dm-checkbox-label" title="Разукрасить весь текст и контент блоков-объектов, содержащих кнопки или ссылки">
                     <input type="checkbox" id="dmRandomCheckbox" class="dm-checkbox-native">
                     <span class="dm-label-text">Рандом</span>
                 </label>
@@ -347,60 +354,57 @@
         const resetBtn = document.getElementById('dmResetTheme');
 
         if (picker) {
-            picker.value = localStorage.getItem(globalStorageKey) || DEFAULT_BLUE_COLOR;
+            picker.value = themeState.get('bg');
             picker.addEventListener('input', (e) => applyUniversalTheme(e.target.value));
             picker.addEventListener('change', (e) => {
-                localStorage.setItem(globalStorageKey, e.target.value);
+                themeState.set('bg', e.target.value);
                 applyUniversalTheme(e.target.value);
             });
         }
 
         if (slider) {
-            slider.value = localStorage.getItem(globalOpacityKey) || '1.0';
+            slider.value = themeState.get('opacity');
             slider.addEventListener('input', (e) => applyOpacity(e.target.value));
             slider.addEventListener('change', (e) => {
-                localStorage.setItem(globalOpacityKey, e.target.value);
+                themeState.set('opacity', e.target.value);
                 applyOpacity(e.target.value);
             });
         }
 
         if (checkbox) {
-            checkbox.checked = localStorage.getItem(globalRandomKey) === 'true';
+            checkbox.checked = themeState.get('random');
             checkbox.addEventListener('change', (e) => {
-                localStorage.setItem(globalRandomKey, e.target.checked);
-                applyUniversalTheme(localStorage.getItem(globalStorageKey) || DEFAULT_BLUE_COLOR);
+                themeState.set('random', e.target.checked);
+                applyUniversalTheme(themeState.get('bg'));
             });
         }
 
         if (resetBtn) {
             resetBtn.addEventListener('click', () => {
-                localStorage.setItem(globalStorageKey, DEFAULT_BLUE_COLOR);
-                localStorage.setItem(globalOpacityKey, '1.0');
-                localStorage.setItem(globalRandomKey, 'false');
+                themeState.reset();
                 
-                applyUniversalTheme(DEFAULT_BLUE_COLOR);
-                applyOpacity('1.0');
+                applyUniversalTheme(themeState.defaults.bg);
+                applyOpacity(themeState.defaults.opacity);
                 
-                if (picker) picker.value = DEFAULT_BLUE_COLOR;
-                if (slider) slider.value = '1.0';
-                if (checkbox) checkbox.checked = false;
+                if (picker) picker.value = themeState.defaults.bg;
+                if (slider) slider.value = themeState.defaults.opacity;
+                if (checkbox) checkbox.checked = themeState.defaults.random;
             });
         }
     }
 
     window.addEventListener('storage', function(event) {
-        if (event.key === globalStorageKey && event.newValue) {
+        if (event.key === themeState.keys.bg && event.newValue) {
             applyUniversalTheme(event.newValue);
         }
-        if (event.key === globalOpacityKey && event.newValue) {
+        if (event.key === themeState.keys.opacity && event.newValue) {
             applyOpacity(event.newValue);
         }
-        if (event.key === globalRandomKey) {
-            applyUniversalTheme(localStorage.getItem(globalStorageKey) || DEFAULT_BLUE_COLOR);
+        if (event.key === themeState.keys.random) {
+            applyUniversalTheme(themeState.get('bg'));
         }
     });
 
-    // Регулярно перепроверяем DOM (каждую секунду), чтобы мгновенно разукрасить новые подгруженные Ajax элементы
     setInterval(() => {
         if (!isAccepted) {
             mount();
