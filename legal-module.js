@@ -1,4 +1,4 @@
-<script>
+
 (function() {
     const projectName = document.title || "Maksym Didukh Project";
     const contactEmail = "didukh.maxim@gmail.com";
@@ -237,4 +237,4 @@
 
     mount();
 })();
-</script>
+
