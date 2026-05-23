@@ -117,23 +117,41 @@
 
     let isAccepted = false;
 
-    // ГЛОБАЛЬНЫЙ КЛЮЧ: Один для всех страниц сайта, чтобы цвет синхронизировался везде
+    // ЕДИНЫЙ ГЛОБАЛЬНЫЙ КЛЮЧ ПАМЯТИ ДЛЯ ВСЕХ СТРАНИЦ
     const globalStorageKey = 'siteBackgroundColor';
 
-    // Сразу же применяем сохраненный цвет (если он есть), чтобы избежать белой вспышки
-    function applySavedColor() {
+    // Вспомогательная функция перевода HEX в RGB формат для корректного сравнения браузером
+    function hexToRgb(hex) {
+        const shorthandRegex = /^#?([a-f\d])([a-f\d])([a-f\d])$/i;
+        hex = hex.replace(shorthandRegex, (m, r, g, b) => r + r + g + g + b + b);
+        const result = /^#?([a-f\d]{2})([a-f\d]{2})([a-f\d]{2})$/i.exec(hex);
+        return result ? `rgb(${parseInt(result[1], 16)}, ${parseInt(result[2], 16)}, ${parseInt(result[3], 16)})` : null;
+    }
+
+    // ЖЕСТКАЯ ПРОВЕРКА И ПРИМЕНЕНИЕ ЦВЕТА
+    function enforceSavedColor() {
+        if (!document.body) return;
         const savedColor = localStorage.getItem(globalStorageKey);
-        if (savedColor && document.body) {
-            document.body.style.backgroundColor = savedColor;
+        
+        if (savedColor) {
+            const currentBg = window.getComputedStyle(document.body).backgroundColor;
+            const targetRgb = hexToRgb(savedColor);
+
+            // Если текущий цвет страницы не совпадает с сохраненным — перезаписываем принудительно
+            if (currentBg !== targetRgb && currentBg !== savedColor) {
+                document.body.style.backgroundColor = savedColor;
+            }
             
-            // Также обновляем положение ползунка в палитре, если она уже нарисована
+            // Синхронизируем кружок палитры
             const picker = document.getElementById('dmBgPicker');
             if (picker && picker.value !== savedColor) {
                 picker.value = savedColor;
             }
         }
     }
-    applySavedColor();
+
+    // Проверяем цвет немедленно
+    enforceSavedColor();
 
     function mount() {
         if (isAccepted || document.getElementById('dm-legal-consent')) return;
@@ -213,34 +231,35 @@
             picker.value = currentSaved;
         }
 
-        // Изменение цвета в реальном времени
+        // Мгновенное изменение при движении мыши по палитре
         picker.addEventListener('input', function(event) {
             document.body.style.backgroundColor = event.target.value;
         });
 
-        // Сохранение в глобальную память
+        // Фиксация в LocalStorage при закрытии окна палитры
         picker.addEventListener('change', function(event) {
             localStorage.setItem(globalStorageKey, event.target.value);
+            enforceSavedColor();
         });
     }
 
-    // Слушатель событий вкладки: если цвет изменили на другой странице, текущая страница сразу обновит фон
+    // СЛУШАТЕЛЬ ДЛЯ МГНОВЕННОГО ПЕРЕКРАШИВАНИЯ СОСЕДНИХ ВКЛАДОК
     window.addEventListener('storage', function(event) {
         if (event.key === globalStorageKey) {
-            applySavedColor();
+            enforceSavedColor();
         }
     });
 
-    // Постоянная проверка в интервале
+    // НЕПРЕРЫВНЫЙ МОНИТОРИНГ ИЗМЕНЕНИЙ (Каждую секунду проверяет, не сбросился ли фон)
     setInterval(() => {
         if (!isAccepted) {
             mount();
         } else {
             addFooter();
         }
-        // Защита: удерживаем выбранный пользователем цвет на странице вопреки сторонним скриптам
-        applySavedColor();
+        enforceSavedColor(); // Если цвет страницы изменился вопреки воле юзера — возвращаем обратно
     }, 1000);
 
     mount();
 })();
+
