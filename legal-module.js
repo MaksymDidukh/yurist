@@ -1,9 +1,8 @@
 (function() {
     const projectName = document.title || "Maksym Didukh Project";
     const contactEmail = "didukh.maxim@gmail.com";
-    const globalStorageKey = 'siteThemeHue'; // Храним оттенок (hue) вместо жесткого HEX
+    const globalStorageKey = 'siteThemeHue';
 
-    // 1. Динамическое определение базовой темы сайта
     let isDefaultDark = false;
     
     function detectSiteTheme() {
@@ -11,22 +10,25 @@
         const bodyBg = window.getComputedStyle(document.body).backgroundColor;
         const rgb = bodyBg.match(/\d+/g);
         if (rgb && rgb.length >= 3) {
-            // Рассчитываем яркость фона сайта (HSP)
             const hsp = Math.sqrt(0.299 * (rgb[0] * rgb[0]) + 0.587 * (rgb[1] * rgb[1]) + 0.114 * (rgb[2] * rgb[2]));
             isDefaultDark = hsp <= 127.5;
         }
     }
 
-    // 2. Инъекция адаптивных и изолированных стилей
     const styleId = 'dm-styles-integrated';
     if (!document.getElementById(styleId)) {
         const style = document.createElement('style');
         style.id = styleId;
         style.innerHTML = `
-            /* Применяем фильтр темы ко всему, КРОМЕ нашего интерфейса */
-            body > *:not(#dm-legal-consent):not(.dm-universal-footer) {
+            /* Глобальный фильтр на корень сайта — теперь сработает ВЕЗДЕ */
+            html {
                 filter: hue-rotate(var(--theme-hue, 0deg)) saturate(var(--theme-saturation, 100%)) !important;
                 transition: filter 0.15s ease !important;
+            }
+
+            /* Магический разворот фильтра для плагина — кнопки и текст НЕ поплывут по цвету */
+            #dm-legal-consent, .dm-universal-footer {
+                filter: hue-rotate(calc(-1 * var(--theme-hue, 0deg))) !important;
             }
 
             /* Изолированные стили служебного интерфейса */
@@ -60,7 +62,7 @@
             }
             .dm-btn-group { 
                 display: flex !important; 
-                flex-wrap: nowrap !important; /* Кнопки не разваливаются на две строки */
+                flex-wrap: nowrap !important; 
                 gap: 10px !important; 
                 justify-content: center !important; 
                 margin-top: 20px !important; 
@@ -71,8 +73,8 @@
                 padding: 12px 20px !important; border-radius: 6px !important; cursor: pointer !important;
                 font-weight: bold !important; font-size: 14px !important; transition: background 0.2s !important;
                 flex: 1 1 auto !important;
-                flex-shrink: 0 !important; /* Кнопки не будут сжиматься */
-                white-space: nowrap !important; /* Защита текста от переноса */
+                flex-shrink: 0 !important; 
+                white-space: nowrap !important; 
             }
             .dm-btn:hover { background: #2ea043 !important; }
             .dm-btn-secondary { background: #484f58 !important; }
@@ -84,13 +86,13 @@
                 padding: 8px 10px !important; font-size: 11px !important; z-index: 2147483646 !important;
                 border-top: 1px solid #30363d !important; 
                 display: flex !important; align-items: center !important; justify-content: center !important; 
-                gap: 10px !important; flex-wrap: nowrap !important; /* Футер жестко в одну линию */
+                gap: 10px !important; flex-wrap: nowrap !important; 
             }
             .dm-universal-footer a { color: #58a6ff !important; text-decoration: none !important; font-weight: bold !important; }
             
             .dm-inline-picker-wrapper {
                 display: inline-flex !important; align-items: center !important; 
-                vertical-align: middle !important; flex-shrink: 0 !important; /* Палитра сохраняет круглую форму */
+                vertical-align: middle !important; flex-shrink: 0 !important; 
                 background: rgba(255, 255, 255, 0.1) !important;
                 padding: 2px !important; border-radius: 50% !important; transition: transform 0.2s ease !important;
             }
@@ -110,7 +112,6 @@
 
     let isAccepted = false;
 
-    // Преобразование выбранного HEX-цвета во вращение цветового спектра (Hue)
     function updateThemeFromHex(hexColor) {
         const shorthandRegex = /^#?([a-f\d])([a-f\d])([a-f\d])$/i;
         let hex = hexColor.replace(shorthandRegex, (m, r, g, b) => r + r + g + g + b + b);
@@ -154,7 +155,6 @@
         }
     }
 
-    // Инициализация при старте
     const initColor = localStorage.getItem(globalStorageKey) || '#58a6ff';
     updateThemeFromHex(initColor);
 
@@ -251,11 +251,10 @@
         enforceSavedColor();
     }, 1000);
 
-    // Безопасный запуск после рендеринга страницы
     if (document.readyState === 'loading') {
         document.addEventListener('DOMContentLoaded', mount);
     } else {
         mount();
     }
 })();
-                        
+            
