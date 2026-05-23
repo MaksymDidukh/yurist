@@ -1,0 +1,135 @@
+<script>
+(function() {
+    // 1. Создаем стили (добавлены стили для встроенного кружка выбора цвета)
+    const style = document.createElement('style');
+    style.innerHTML = `
+        .universal-legal-footer {
+            position: fixed; bottom: 0; left: 0; width: 100%; 
+            background: rgba(13, 17, 23, 0.9); color: #8b949e; 
+            text-align: center; padding: 8px 0; font-family: sans-serif; 
+            font-size: 11px; z-index: 999999; backdrop-filter: blur(5px);
+            border-top: 1px solid #30363d;
+        }
+        .universal-legal-footer a { color: #58a6ff; text-decoration: none; margin: 0 10px; cursor: pointer; }
+        
+        #legal-modal {
+            display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%;
+            background: rgba(0,0,0,0.85); z-index: 1000000; overflow-y: auto; padding: 20px;
+            box-sizing: border-box; color: #c9d1d9; font-family: sans-serif; line-height: 1.5;
+        }
+        .modal-content {
+            background: #161b22; max-width: 800px; margin: 40px auto; 
+            padding: 30px; border-radius: 8px; border: 1px solid #30363d; position: relative;
+        }
+        .close-modal { position: absolute; top: 15px; right: 20px; font-size: 24px; cursor: pointer; color: #58a6ff; }
+        .legal-box { background: #0d1117; padding: 15px; border-radius: 5px; margin: 15px 0; border-left: 4px solid #58a6ff; }
+        h2 { color: #58a6ff; font-size: 18px; border-bottom: 1px solid #30363d; padding-bottom: 5px; }
+
+        /* Контейнер для кружка, встроенный в текст */
+        .inline-color-picker-wrapper {
+            display: inline-flex;
+            align-items: center;
+            vertical-align: middle;
+            margin-left: 10px;
+            background: rgba(255, 255, 255, 0.1);
+            padding: 4px;
+            border-radius: 50%;
+            box-shadow: 0 2px 8px rgba(0,0,0,0.4);
+            transition: transform 0.2s ease;
+        }
+        .inline-color-picker-wrapper:hover {
+            transform: scale(1.1);
+        }
+
+        /* Сам круглый инпут выбора цвета */
+        .round-picker {
+            -webkit-appearance: none;
+            -moz-appearance: none;
+            appearance: none;
+            width: 28px;
+            height: 28px;
+            background: transparent;
+            border: none;
+            cursor: pointer;
+            border-radius: 50%;
+            display: block;
+        }
+        .round-picker::-webkit-color-swatch-wrapper { padding: 0; }
+        .round-picker::-webkit-color-swatch {
+            border: 1px solid #fff;
+            border-radius: 50%;
+            background: conic-gradient(red, yellow, lime, aqua, blue, magenta, red);
+        }
+        .round-picker::-moz-color-swatch {
+            border: 1px solid #fff;
+            border-radius: 50%;
+            background: conic-gradient(red, yellow, lime, aqua, blue, magenta, red);
+        }
+    `;
+    document.head.appendChild(style);
+
+    // 2. Создаем футер
+    const footer = document.createElement('footer');
+    footer.className = 'universal-legal-footer';
+    footer.innerHTML = `
+        &copy; 2026 Maksym Didukh | 
+        <a href="https://wwwwebs.netlify.app/">Dashboard</a> | 
+        <a id="open-legal">Impressum & Datenschutz</a>
+    `;
+    document.body.appendChild(footer);
+
+    // 3. Создаем модальное окно с текстом (кружок добавлен внутрь заголовка H2 третьей секции)
+    const modal = document.createElement('div');
+    modal.id = 'legal-modal';
+    modal.innerHTML = `
+        <div class="modal-content">
+            <span class="close-modal" id="close-legal">&times;</span>
+            <h1>Rechtliche Hinweise</h1>
+            
+            <h2>1. Impressum</h2>
+            <div class="legal-box">
+                <strong>Anbieter:</strong> Maksym Didukh<br>
+                Johannes-Rieden-Straße 1, 56599 Leutesdorf, Deutschland<br>
+                <strong>Kontakt:</strong> didukh.maxim@gmail.com | +380992441324
+            </div>
+
+            <h2>2. Haftungsausschluss (Disclaimer)</h2>
+            <p>Trotz sorgfältiger inhaltlicher Kontrolle übernehmen wir keine Haftung für die Inhalte externer Links. Für den Inhalt der verlinkten Seiten sind ausschließlich deren Betreiber verantwortlich.</p>
+            <p><strong>Nutzergenerierte Inhalte:</strong> Wir distанциируемся ausdrücklich von unzulässigen oder anstößigen Inhalten, die durch Nutzer (z.B. in DrawingTogether oder Chats) erstellt werden könnten. Solche Inhalte werden bei Kenntnisnahme sofort entfernt.</p>
+
+            <h2>
+                3. Datenschutzerklärung
+                <span class="inline-color-picker-wrapper">
+                    <input type="color" id="bgPicker" class="round-picker" title="Выбрать цвет фона">
+                </span>
+            </h2>
+            <p><strong>Hosting:</strong> Diese Webseite wird über Netlify Inc. gehostet. Hierbei werden technisch notwendige Daten (IP-Adresse) in Logfiles verarbeitet.</p>
+            <p><strong>Interaktive Funktionen:</strong> In 3D-Anwendungen und Chats werden Ihre Eingaben (Zeichnungen, Texte) zur Echtzeit-Synchronisation in einer Datenbank verarbeitet und sind für andere Nutzer sichtbar.</p>
+            <p><strong>Ihre Rechte:</strong> Sie haben das Recht auf Auskunft, Berichtigung und Löschung Ihrer Daten gemäß DSGVO.</p>
+        </div>
+    `;
+    document.body.appendChild(modal);
+
+    // 4. Логика смены фона сайта и сохранения в LocalStorage
+    const picker = document.getElementById('bgPicker');
+    const savedColor = localStorage.getItem('siteBackgroundColor');
+    
+    if (savedColor) {
+        document.body.style.backgroundColor = savedColor;
+        picker.value = savedColor;
+    }
+
+    picker.addEventListener('input', (event) => {
+        document.body.style.backgroundColor = event.target.value;
+    });
+
+    picker.addEventListener('change', (event) => {
+        localStorage.setItem('siteBackgroundColor', event.target.value);
+    });
+
+    // 5. Логика открытия/закрытия модального окна
+    document.getElementById('open-legal').onclick = () => modal.style.display = 'block';
+    document.getElementById('close-legal').onclick = () => modal.style.display = 'none';
+    window.onclick = (event) => { if (event.target == modal) modal.style.display = 'none'; };
+})();
+</script>
