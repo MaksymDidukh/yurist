@@ -1,33 +1,39 @@
 (function() {
     const projectName = document.title || "Maksym Didukh Project";
     const contactEmail = "didukh.maxim@gmail.com";
-    const globalStorageKey = 'siteThemeUniversalColor'; // Ключ для сохранения выбранной темы
+    const globalStorageKey = 'siteThemeUniversalColor';
+    const globalOpacityKey = 'siteThemeOpacity';
+
+    // Указываем дефолтный синий цвет для всего скрипта здесь
+    const DEFAULT_BLUE_COLOR = '#0c162d'; 
 
     let isAccepted = false;
 
-    // 1. Инъекция адаптивных стилей темы для любого сайта
+    // 1. Инъекция адаптивных стилей темы и управления прозрачностью
     const styleId = 'dm-styles-integrated';
     if (!document.getElementById(styleId)) {
         const style = document.createElement('style');
         style.id = styleId;
         style.innerHTML = `
-            /* Принудительная смена фона и текста для основы любого сайта */
+            /* Принудительная смена фона основы любого сайта */
             html, body {
-                background-color: var(--u-bg, #0d1117) !important;
+                background-color: var(--u-bg, ${DEFAULT_BLUE_COLOR}) !important;
                 color: var(--u-text, #ffffff) !important;
                 transition: background-color 0.2s ease, color 0.2s ease !important;
             }
 
-            /* Умное окрашивание внутренних блоков сайта (карточки, секции, меню), чтобы они не сливались */
+            /* Умное окрашивание блоков с регулируемой пользователем прозрачностью */
             body div:not([id^="dm-"]):not([class^="dm-"]), 
             body section, body article, body header, body footer:not(.dm-universal-footer), 
             body main, body nav, body aside, body form {
                 background-color: var(--u-block-bg) !important;
                 color: var(--u-text) !important;
                 border-color: var(--u-border) !important;
+                opacity: var(--u-opacity, 1) !important;
+                transition: opacity 0.15s ease !important;
             }
 
-            /* Адаптивный контроль читаемости текстов, заголовков и ссылок */
+            /* Контроль читаемости текстов, заголовков и ссылок стороннего сайта */
             body p, body span, body li, body th, body td, body label, body small, body time {
                 color: var(--u-text-muted) !important;
             }
@@ -44,7 +50,7 @@
                 border: 1px solid var(--u-border) !important;
             }
 
-            /* ИЗОЛИРОВАННЫЕ СТИЛИ СЛУЖЕБНОГО ИНТЕРФЕЙСА (Полный сброс, чтобы на них не влияла палитра) */
+            /* ИЗОЛИРОВАННЫЕ СТИЛИ СЛУЖЕБНОГО ИНТЕРФЕЙСА (Полный сброс) */
             #dm-legal-consent, .dm-universal-footer {
                 all: initial !important;
                 font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif !important;
@@ -99,10 +105,17 @@
                 padding: 8px 10px !important; font-size: 11px !important; z-index: 2147483646 !important;
                 border-top: 1px solid #30363d !important; 
                 display: flex !important; align-items: center !important; justify-content: center !important; 
-                gap: 10px !important; flex-wrap: nowrap !important; 
+                gap: 12px !important; flex-wrap: nowrap !important; 
             }
             .dm-universal-footer a { color: #58a6ff !important; text-decoration: none !important; font-weight: bold !important; }
             
+            /* Стили панели инструментов управления темой */
+            .dm-controls-group {
+                display: inline-flex !important;
+                align-items: center !important;
+                gap: 8px !important;
+                flex-shrink: 0 !important;
+            }
             .dm-inline-picker-wrapper {
                 display: inline-flex !important; align-items: center !important; 
                 vertical-align: middle !important; flex-shrink: 0 !important; 
@@ -118,12 +131,39 @@
             .dm-round-picker::-webkit-color-swatch { border: 1px solid #ffffff !important; border-radius: 50% !important; }
             .dm-round-picker::-moz-color-swatch { border: 1px solid #ffffff !important; border-radius: 50% !important; }
 
+            /* Стилизация ползунка прозрачности */
+            .dm-opacity-range {
+                -webkit-appearance: none !important; appearance: none !important;
+                width: 70px !important; height: 4px !important; background: #30363d !important;
+                border-radius: 2px !important; outline: none !important; cursor: pointer !important;
+                vertical-align: middle !important;
+            }
+            .dm-opacity-range::-webkit-slider-thumb {
+                -webkit-appearance: none !important; appearance: none !important;
+                width: 12px !important; height: 12px !important; border-radius: 50% !important;
+                background: #58a6ff !important; cursor: pointer !important; transition: transform 0.1s !important;
+            }
+            .dm-opacity-range::-webkit-slider-thumb:hover { transform: scale(1.3) !important; background: #79c0ff !important; }
+            .dm-opacity-range::-moz-range-thumb {
+                width: 12px !important; height: 12px !important; border-radius: 50% !important;
+                background: #58a6ff !important; cursor: pointer !important; border: none !important;
+            }
+
+            /* Кнопка сброса темы */
+            .dm-reset-btn {
+                background: transparent !important; border: none !important; color: #8b949e !important;
+                font-size: 14px !important; cursor: pointer !important; padding: 2px 5px !important;
+                display: inline-flex !important; align-items: center !important; justify-content: center !important;
+                transition: color 0.2s, transform 0.2s !important; line-height: 1 !important;
+            }
+            .dm-reset-btn:hover { color: #f85149 !important; transform: rotate(-45deg) !important; }
+
             @media (max-height: 250px) { .dm-universal-footer { position: static !important; } }
         `;
         (document.head || document.documentElement).appendChild(style);
     }
 
-    // 2. Математический движок генерации темы на основе выбранного цвета (HSP алгоритм)
+    // 2. Генератор контрастной адаптивной темы (HSP алгоритм)
     function applyUniversalTheme(hexColor) {
         const shorthandRegex = /^#?([a-f\d])([a-f\d])([a-f\d])$/i;
         let hex = hexColor.replace(shorthandRegex, (m, r, g, b) => r + r + g + g + b + b);
@@ -134,36 +174,30 @@
         let g = parseInt(result[2], 16);
         let b = parseInt(result[3], 16);
 
-        // Расчет яркости восприятия человеческим глазом
         let hsp = Math.sqrt(0.299 * (r * r) + 0.587 * (g * g) + 0.114 * (b * b));
         
         let textColor, textMuted, blockBg, borderStyle, linkColor;
 
         if (hsp > 200) { 
-            // ─── СВЕТЛАЯ ТЕМА (Выбран белый / пастельный цвет) ───
             textColor = '#0e1116';
             textMuted = '#48525c';
-            blockBg = 'rgba(0, 0, 0, 0.04)'; // Делаем блоки чуть темнее основного яркого фона
+            blockBg = 'rgba(0, 0, 0, 0.04)'; 
             borderStyle = 'rgba(0, 0, 0, 0.12)';
             linkColor = '#0969da';
         } else if (hsp < 40) {
-            // ─── ТЕМНАЯ ТЕМА (Выбран черный / темно-серый цвет) ───
             textColor = '#ffffff';
             textMuted = '#919eab';
-            blockBg = 'rgba(255, 255, 255, 0.06)'; // Блоки чуть светлее черного фона
+            blockBg = 'rgba(255, 255, 255, 0.06)'; 
             borderStyle = 'rgba(255, 255, 255, 0.15)';
             linkColor = '#58a6ff';
         } else {
-            // ─── ЦВЕТНАЯ ТЕМА (Любой цвет из палитры: красный, фиолетовый, зеленый) ───
             if (hsp > 127.5) {
-                // Цвет яркий/ближе к светлому
                 textColor = '#05070a';
                 textMuted = 'rgba(0, 0, 0, 0.7)';
                 blockBg = 'rgba(0, 0, 0, 0.07)';
                 borderStyle = 'rgba(0, 0, 0, 0.15)';
                 linkColor = '#003d99';
             } else {
-                // Цвет глубокий/ближе к темному
                 textColor = '#ffffff';
                 textMuted = 'rgba(255, 255, 255, 0.75)';
                 blockBg = 'rgba(255, 255, 255, 0.09)';
@@ -172,7 +206,6 @@
             }
         }
 
-        // Применяем вычисленные цвета темы к CSS-переменным документа
         const root = document.documentElement;
         root.style.setProperty('--u-bg', hexColor);
         root.style.setProperty('--u-text', textColor);
@@ -182,19 +215,32 @@
         root.style.setProperty('--u-link', linkColor);
     }
 
+    // 3. Установка уровня прозрачности
+    function applyOpacity(val) {
+        document.documentElement.style.setProperty('--u-opacity', val);
+    }
+
     function enforceSavedColor() {
-        const savedColor = localStorage.getItem(globalStorageKey) || '#0d1117';
+        // Заменяем дефолтное значение с '#0d1117' на DEFAULT_BLUE_COLOR
+        const savedColor = localStorage.getItem(globalStorageKey) || DEFAULT_BLUE_COLOR;
         applyUniversalTheme(savedColor);
         
         const picker = document.getElementById('dmBgPicker');
         if (picker && picker.value !== savedColor) {
             picker.value = savedColor;
         }
+
+        const savedOpacity = localStorage.getItem(globalOpacityKey) || '1.0';
+        applyOpacity(savedOpacity);
+        const slider = document.getElementById('dmOpacitySlider');
+        if (slider && slider.value !== savedOpacity) {
+            slider.value = savedOpacity;
+        }
     }
 
-    // Инициализация темы сразу при подключении скрипта
-    const initColor = localStorage.getItem(globalStorageKey) || '#0d1117';
-    applyUniversalTheme(initColor);
+    // Первичная инициализация при старте (заменяем дефолт с '#0d1117' на синий)
+    applyUniversalTheme(localStorage.getItem(globalStorageKey) || DEFAULT_BLUE_COLOR);
+    applyOpacity(localStorage.getItem(globalOpacityKey) || '1.0');
 
     function mount() {
         if (isAccepted || document.getElementById('dm-legal-consent')) return;
@@ -246,34 +292,70 @@
             &copy; 2026 Maksym Didukh | Contact: ${contactEmail} | Project: <b>${projectName}</b> | 
             <a href="https://dmamax.netlify.app/impressum" target="_blank">Impressum</a> | 
             <a href="https://dmamax.netlify.app/datenschutz" target="_blank">Datenschutz</a>
-            <span class="dm-inline-picker-wrapper">
-                <input type="color" id="dmBgPicker" class="dm-round-picker" title="Design-Thema für alle Seiten ändern">
-            </span>
+            
+            <div class="dm-controls-group">
+                <span style="color: #8b949e !important;">Opacity:</span>
+                <input type="range" id="dmOpacitySlider" class="dm-opacity-range" min="0.1" max="1.0" step="0.05" title="Прозрачность элементов сайта">
+                
+                <span class="dm-inline-picker-wrapper">
+                    <input type="color" id="dmBgPicker" class="dm-round-picker" title="Design-Thema für alle Seiten ändern">
+                </span>
+                
+                <button id="dmResetTheme" class="dm-reset-btn" title="Сбросить цвет и прозрачность">↺</button>
+            </div>
         `;
         document.documentElement.appendChild(footer);
 
-        setupColorPicker();
+        setupControls();
     }
 
-    function setupColorPicker() {
+    function setupControls() {
         const picker = document.getElementById('dmBgPicker');
-        if (!picker) return;
+        const slider = document.getElementById('dmOpacitySlider');
+        const resetBtn = document.getElementById('dmResetTheme');
 
-        picker.value = localStorage.getItem(globalStorageKey) || '#0d1117';
+        if (picker) {
+            picker.value = localStorage.getItem(globalStorageKey) || DEFAULT_BLUE_COLOR;
+            picker.addEventListener('input', (e) => applyUniversalTheme(e.target.value));
+            picker.addEventListener('change', (e) => {
+                localStorage.setItem(globalStorageKey, e.target.value);
+                applyUniversalTheme(e.target.value);
+            });
+        }
 
-        picker.addEventListener('input', function(event) {
-            applyUniversalTheme(event.target.value);
-        });
+        if (slider) {
+            slider.value = localStorage.getItem(globalOpacityKey) || '1.0';
+            slider.addEventListener('input', (e) => applyOpacity(e.target.value));
+            slider.addEventListener('change', (e) => {
+                localStorage.setItem(globalOpacityKey, e.target.value);
+                applyOpacity(e.target.value);
+            });
+        }
 
-        picker.addEventListener('change', function(event) {
-            localStorage.setItem(globalStorageKey, event.target.value);
-            applyUniversalTheme(event.target.value);
-        });
+        if (resetBtn) {
+            resetBtn.addEventListener('click', () => {
+                // При сбросе возвращаем синий дефолт вместо серого
+                const defaultColor = DEFAULT_BLUE_COLOR;
+                const defaultOpacity = '1.0';
+                
+                localStorage.setItem(globalStorageKey, defaultColor);
+                localStorage.setItem(globalOpacityKey, defaultOpacity);
+                
+                applyUniversalTheme(defaultColor);
+                applyOpacity(defaultOpacity);
+                
+                if (picker) picker.value = defaultColor;
+                if (slider) slider.value = defaultOpacity;
+            });
+        }
     }
 
     window.addEventListener('storage', function(event) {
         if (event.key === globalStorageKey && event.newValue) {
             applyUniversalTheme(event.newValue);
+        }
+        if (event.key === globalOpacityKey && event.newValue) {
+            applyOpacity(event.newValue);
         }
     });
 
@@ -292,4 +374,3 @@
         mount();
     }
 })();
-    
