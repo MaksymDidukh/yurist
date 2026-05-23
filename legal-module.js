@@ -2,12 +2,34 @@
     const projectName = document.title || "Maksym Didukh Project";
     const contactEmail = "didukh.maxim@gmail.com";
 
-    // 1. СТИЛИ (Адаптация под микро-размеры + единая палитра в футере)
+    // 1. СТИЛИ (Базовое оформление + инъекция динамических переменных темы для всего сайта)
     const styleId = 'dm-styles-integrated';
     if (!document.getElementById(styleId)) {
         const style = document.createElement('style');
         style.id = styleId;
         style.innerHTML = `
+            /* ГЛОБАЛЬНЫЕ НАСТРОЙКИ ТЕМЫ ДЛЯ ВСЕХ СТРАНИЦ */
+            body {
+                background-color: var(--theme-bg) !important;
+                color: var(--theme-text) !important;
+                transition: background-color 0.15s ease, color 0.15s ease !important;
+            }
+            /* Авто-применение темы к стандартным элементам сайта */
+            body p, body span, body li, body div:not([class^="dm-"]) { 
+                color: var(--theme-text-muted, var(--theme-text)) ; 
+            }
+            body h1, body h2, body h3, body h4, body h5, body h6 { 
+                color: var(--theme-accent, var(--theme-text)) ; 
+            }
+            body a:not([class^="dm-"]) { 
+                color: var(--theme-accent) ; 
+            }
+            body button:not([class^="dm-"]) {
+                background-color: var(--theme-accent) ;
+                color: var(--theme-bg) ;
+            }
+
+            /* Изолированные стили служебного интерфейса */
             #dm-legal-consent, .dm-universal-footer {
                 all: initial !important;
                 font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif !important;
@@ -116,33 +138,71 @@
     }
 
     let isAccepted = false;
-
-    // ЕДИНЫЙ ГЛОБАЛЬНЫЙ КЛЮЧ ПАМЯТИ ДЛЯ ВСЕХ СТРАНИЦ
     const globalStorageKey = 'siteBackgroundColor';
 
-    // Вспомогательная функция перевода HEX в RGB формат для корректного сравнения браузером
-    function hexToRgb(hex) {
+    // Вспомогательная функция: парсинг HEX в чистые RGB компоненты
+    function hexToRgbComponents(hex) {
         const shorthandRegex = /^#?([a-f\d])([a-f\d])([a-f\d])$/i;
         hex = hex.replace(shorthandRegex, (m, r, g, b) => r + r + g + g + b + b);
         const result = /^#?([a-f\d]{2})([a-f\d]{2})([a-f\d]{2})$/i.exec(hex);
-        return result ? `rgb(${parseInt(result[1], 16)}, ${parseInt(result[2], 16)}, ${parseInt(result[3], 16)})` : null;
+        return result ? {
+            r: parseInt(result[1], 16),
+            g: parseInt(result[2], 16),
+            b: parseInt(result[3], 16)
+        } : null;
     }
 
-    // ЖЕСТКАЯ ПРОВЕРКА И ПРИМЕНЕНИЕ ЦВЕТА
+    // Вспомогательная функция: перевод HEX в CSS формат rgb()
+    function hexToRgbString(hex) {
+        const comp = hexToRgbComponents(hex);
+        return comp ? `rgb(${comp.r}, ${comp.g}, ${comp.b})` : null;
+    }
+
+    // ГЕНЕРАЦИЯ ЦВЕТОВОЙ ТЕМЫ НА ОСНОВЕ ЦВЕТА ФОНА
+    function applyThemeVariables(hexColor) {
+        const rgb = hexToRgbComponents(hexColor);
+        if (!rgb) return;
+
+        // Вычисляем яркость по стандарту HSP (высокое значение = светлый фон)
+        const hsp = Math.sqrt(0.299 * (rgb.r * rgb.r) + 0.587 * (rgb.g * rgb.g) + 0.114 * (rgb.b * rgb.b));
+        
+        let textColor, textColorMuted, accentColor;
+
+        if (hsp > 127.5) {
+            // Светлая тема сайта
+            textColor = '#0d1117';
+            textColorMuted = '#484f58';
+            accentColor = rgb.g > 200 && rgb.r < 100 ? '#0066cc' : '#58a6ff'; // адаптация акцента
+        } else {
+            // Темная тема сайта
+            textColor = '#c9d1d9';
+            textColorMuted = '#8b949e';
+            accentColor = '#58a6ff';
+        }
+
+        // Записываем переменные темы в корневой элемент documentElement, чтобы они накрыли все страницы
+        const root = document.documentElement;
+        root.style.setProperty('--theme-bg', hexColor);
+        root.style.setProperty('--theme-text', textColor);
+        root.style.setProperty('--theme-text-muted', textColorMuted);
+        root.style.setProperty('--theme-accent', accentColor);
+    }
+
+    // ЖЕСТКАЯ ПРОВЕРКА И ПРИНУДИТЕЛЬНОЕ УДЕРЖАНИЕ ТЕМЫ НА ВСЕХ СТРАНИЦАХ
     function enforceSavedColor() {
         if (!document.body) return;
         const savedColor = localStorage.getItem(globalStorageKey);
         
         if (savedColor) {
             const currentBg = window.getComputedStyle(document.body).backgroundColor;
-            const targetRgb = hexToRgb(savedColor);
+            const targetRgbStr = hexToRgbString(savedColor);
 
-            // Если текущий цвет страницы не совпадает с сохраненным — перезаписываем принудительно
-            if (currentBg !== targetRgb && currentBg !== savedColor) {
-                document.body.style.backgroundColor = savedColor;
+            // Проверяем соответствие текущего фона с сохраненным
+            if (currentBg !== targetRgbStr && currentBg !== savedColor) {
+                applyThemeVariables(savedColor);
             }
             
-            // Синхронизируем кружок палитры
+            // Синхронизируем значение бегунка на палитре
             const picker = document.getElementById('dmBgPicker');
             if (picker && picker.value !== savedColor) {
                 picker.value = savedColor;
@@ -150,8 +210,9 @@
         }
     }
 
-    // Проверяем цвет немедленно
-    enforceSavedColor();
+    // Инициализируем тему незамедлительно
+    const initColor = localStorage.getItem(globalStorageKey);
+    if (initColor) applyThemeVariables(initColor);
 
     function mount() {
         if (isAccepted || document.getElementById('dm-legal-consent')) return;
@@ -162,15 +223,15 @@
         modal.id = 'dm-legal-consent';
         modal.innerHTML = `
            <div class="dm-consent-box">
-    <h2 style="color:#58a6ff !important; margin:0 0 10px 0 !important; font-size:22px !important; font-weight:bold !important;">
+    <h2 style="color:#58a6ff !important; margin:0 0 10px 0 !important; font-size:22px !important; font-weight:bold !important; background:none !important;">
         Rechtliche Bestätigung
     </h2>
 
-    <p style="color:#c9d1d9 !important; margin-bottom:15px !important; font-size:14px !important;">
+    <p style="color:#c9d1d9 !important; margin-bottom:15px !important; font-size:14px !important; background:none !important;">
         Sie nutzen gerade das Projekt: <span style="color:#238636 !important; font-weight:bold !important;">${projectName}</span>
     </p>
 
-    <div style="margin-bottom:20px !important; font-size:13px !important;">
+    <div style="margin-bottom:20px !important; font-size:13px !important; background:none !important;">
         <a href="https://dmamax.netlify.app/impressum" target="_blank" style="color:#58a6ff !important;">Impressum</a> |
         <a href="https://dmamax.netlify.app/datenschutz" target="_blank" style="color:#58a6ff !important;">Datenschutz</a>
     </div>
@@ -182,7 +243,7 @@
         • <b>Datenverarbeitung:</b> Es können technische Daten (z. B. IP-Adresse, Browser, Zeitstempel) sowie LocalStorage-Daten zur Funktion gespeichert werden.
     </div>
 
-    <p style="color:#f85149 !important; font-weight:bold !important; margin:0 0 15px 0 !important; font-size:14px !important;">
+    <p style="color:#f85149 !important; font-weight:bold !important; margin:0 0 15px 0 !important; font-size:14px !important; background:none !important;">
         Stimmen Sie den Bedingungen für <b>${projectName}</b> zu?
     </p>
 
@@ -214,7 +275,7 @@
             <a href="https://dmamax.netlify.app/impressum" target="_blank">Impressum</a> | 
             <a href="https://dmamax.netlify.app/datenschutz" target="_blank">Datenschutz</a>
             <span class="dm-inline-picker-wrapper">
-                <input type="color" id="dmBgPicker" class="dm-round-picker" title="Hintergrundfarbe für alle Seiten ändern">
+                <input type="color" id="dmBgPicker" class="dm-round-picker" title="Design-Thema für alle Seiten ändern">
             </span>
         `;
         document.documentElement.appendChild(footer);
@@ -231,35 +292,34 @@
             picker.value = currentSaved;
         }
 
-        // Мгновенное изменение при движении мыши по палитре
+        // Мгновенная перестройка темы при перетаскивании ползунка
         picker.addEventListener('input', function(event) {
-            document.body.style.backgroundColor = event.target.value;
+            applyThemeVariables(event.target.value);
         });
 
-        // Фиксация в LocalStorage при закрытии окна палитры
+        // Фиксация выбранной схемы в память
         picker.addEventListener('change', function(event) {
             localStorage.setItem(globalStorageKey, event.target.value);
-            enforceSavedColor();
+            applyThemeVariables(event.target.value);
         });
     }
 
-    // СЛУШАТЕЛЬ ДЛЯ МГНОВЕННОГО ПЕРЕКРАШИВАНИЯ СОСЕДНИХ ВКЛАДОК
+    // Синхронизация между открытыми вкладками проектов в реальном времени
     window.addEventListener('storage', function(event) {
-        if (event.key === globalStorageKey) {
-            enforceSavedColor();
+        if (event.key === globalStorageKey && event.newValue) {
+            applyThemeVariables(event.newValue);
         }
     });
 
-    // НЕПРЕРЫВНЫЙ МОНИТОРИНГ ИЗМЕНЕНИЙ (Каждую секунду проверяет, не сбросился ли фон)
+    // Постоянный мониторинг темы на каждой странице
     setInterval(() => {
         if (!isAccepted) {
             mount();
         } else {
             addFooter();
         }
-        enforceSavedColor(); // Если цвет страницы изменился вопреки воле юзера — возвращаем обратно
+        enforceSavedColor();
     }, 1000);
 
     mount();
 })();
-
