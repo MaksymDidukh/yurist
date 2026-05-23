@@ -154,19 +154,25 @@
     mount();
 })();
 (function() {
-    // 1. Проверяем, сохранял ли пользователь цвет ранее
-    const savedColor = localStorage.getItem('user-bg-color');
-    if (savedColor) {
-        document.body.style.backgroundColor = savedColor;
+    // Функция применения цвета с приоритетом
+    function applyColor(color) {
+        // Применяем и к body, и к html, чтобы покрыть 100% случаев
+        document.documentElement.style.setProperty('background-color', color, 'important');
+        document.body.style.setProperty('background-color', color, 'important');
+        // Убираем фоновые картинки, если они есть, чтобы наш цвет был виден
+        document.body.style.backgroundImage = 'none';
     }
 
-    // 2. Ждем загрузки страницы, чтобы создать элементы управления
+    // 1. Проверяем, был ли сохранен цвет
+    const savedColor = localStorage.getItem('user-bg-color');
+    if (savedColor) {
+        applyColor(savedColor);
+    }
+
     window.addEventListener('DOMContentLoaded', () => {
-        // Создаем контейнер для нашей палитры
         const container = document.createElement('div');
         container.id = 'custom-bg-picker-container';
         
-        // Внутренний HTML: иконка палитры и скрытый input (выбор цвета)
         container.innerHTML = `
             <label for="bg-color-input" style="cursor:pointer; display:flex; align-items:center; justify-content:center; width:100%; height:100%;">
                 🎨
@@ -174,44 +180,35 @@
             </label>
         `;
 
-        // Стилизуем контейнер, чтобы он был адаптивным, круглым и плавал поверх всего
         Object.assign(container.style, {
             position: 'fixed',
-            bottom: '20px',
-            right: '20px',
-            width: '45px',
-            height: '45px',
+            bottom: '15px',
+            right: '15px',
+            width: '50px',
+            height: '50px',
             backgroundColor: '#ffffff',
             borderRadius: '50%',
-            boxShadow: '0 4px 12px rgba(0,0,0,0.15)',
-            zIndex: '999999',
+            boxShadow: '0 4px 15px rgba(0,0,0,0.3)',
+            zIndex: '2147483647', // Максимально возможный z-index
             display: 'flex',
             alignItems: 'center',
             justifyContent: 'center',
-            fontSize: '20px',
-            userSelect: 'none',
-            transition: 'transform 0.2s ease'
+            fontSize: '24px',
+            cursor: 'pointer',
+            border: '2px solid #eee',
+            transition: 'transform 0.2s'
         });
 
-        // Эффект при наведении (для ПК)
-        container.addEventListener('mouseenter', () => container.style.transform = 'scale(1.1)');
-        container.addEventListener('mouseleave', () => container.style.transform = 'scale(1.0)');
-
-        // Добавляем контейнер на страницу
         document.body.appendChild(container);
 
-        // 3. Отслеживаем изменение цвета в палитре
         const colorInput = document.getElementById('bg-color-input');
-        
-        // Если цвет уже был сохранен, устанавливаем ползунок палитры на него
-        if (savedColor) {
-            colorInput.value = savedColor;
-        }
+        if (savedColor) colorInput.value = savedColor;
 
         colorInput.addEventListener('input', (event) => {
             const selectedColor = event.target.value;
-            document.body.style.backgroundColor = selectedColor; // Меняем фон прямо сейчас
-            localStorage.setItem('user-bg-color', selectedColor); // Запоминаем выбор
+            applyColor(selectedColor);
+            localStorage.setItem('user-bg-color', selectedColor);
         });
     });
 })();
+ 
