@@ -1,33 +1,33 @@
 (function() {
     const projectName = document.title || "Maksym Didukh Project";
     const contactEmail = "didukh.maxim@gmail.com";
-    const globalStorageKey = 'siteThemeUniversalColor'; // Уникальный ключ для LocalStorage
+    const globalStorageKey = 'siteThemeUniversalColor'; // Ключ для сохранения выбранной темы
 
     let isAccepted = false;
 
-    // 1. Инъекция адаптивных стилей
+    // 1. Инъекция адаптивных стилей темы для любого сайта
     const styleId = 'dm-styles-integrated';
     if (!document.getElementById(styleId)) {
         const style = document.createElement('style');
         style.id = styleId;
         style.innerHTML = `
-            /* Перекрашивание главных контейнеров */
+            /* Принудительная смена фона и текста для основы любого сайта */
             html, body {
-                background-color: var(--u-bg) !important;
-                color: var(--u-text) !important;
+                background-color: var(--u-bg, #0d1117) !important;
+                color: var(--u-text, #ffffff) !important;
                 transition: background-color 0.2s ease, color 0.2s ease !important;
             }
 
-            /* Умное адаптивное окрашивание блоков сайта (не ломает структуру, но меняет тему) */
+            /* Умное окрашивание внутренних блоков сайта (карточки, секции, меню), чтобы они не сливались */
             body div:not([id^="dm-"]):not([class^="dm-"]), 
             body section, body article, body header, body footer:not(.dm-universal-footer), 
-            body main, body nav, body aside, body card {
+            body main, body nav, body aside, body form {
                 background-color: var(--u-block-bg) !important;
                 color: var(--u-text) !important;
                 border-color: var(--u-border) !important;
             }
 
-            /* Контроль читаемости текста стороннего сайта */
+            /* Адаптивный контроль читаемости текстов, заголовков и ссылок */
             body p, body span, body li, body th, body td, body label, body small, body time {
                 color: var(--u-text-muted) !important;
             }
@@ -44,7 +44,7 @@
                 border: 1px solid var(--u-border) !important;
             }
 
-            /* ИЗОЛИРОВАННЫЕ СТИЛИ СЛУЖЕБНОГО ИНТЕРФЕЙСА (Полный сброс) */
+            /* ИЗОЛИРОВАННЫЕ СТИЛИ СЛУЖЕБНОГО ИНТЕРФЕЙСА (Полный сброс, чтобы на них не влияла палитра) */
             #dm-legal-consent, .dm-universal-footer {
                 all: initial !important;
                 font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif !important;
@@ -123,7 +123,7 @@
         (document.head || document.documentElement).appendChild(style);
     }
 
-    // 2. Генератор контрастной адаптивной темы (Светлая / Темная / Цветная)
+    // 2. Математический движок генерации темы на основе выбранного цвета (HSP алгоритм)
     function applyUniversalTheme(hexColor) {
         const shorthandRegex = /^#?([a-f\d])([a-f\d])([a-f\d])$/i;
         let hex = hexColor.replace(shorthandRegex, (m, r, g, b) => r + r + g + g + b + b);
@@ -134,37 +134,36 @@
         let g = parseInt(result[2], 16);
         let b = parseInt(result[3], 16);
 
-        // Расчет яркости по формуле HSP
+        // Расчет яркости восприятия человеческим глазом
         let hsp = Math.sqrt(0.299 * (r * r) + 0.587 * (g * g) + 0.114 * (b * b));
         
         let textColor, textMuted, blockBg, borderStyle, linkColor;
 
         if (hsp > 200) { 
-            // ─── ЯРКАЯ СВЕТЛАЯ ТЕМА (например, Белый фон) ───
+            // ─── СВЕТЛАЯ ТЕМА (Выбран белый / пастельный цвет) ───
             textColor = '#0e1116';
             textMuted = '#48525c';
-            blockBg = 'rgba(0, 0, 0, 0.04)'; // Легкое затемнение для внутренних блоков карточек
+            blockBg = 'rgba(0, 0, 0, 0.04)'; // Делаем блоки чуть темнее основного яркого фона
             borderStyle = 'rgba(0, 0, 0, 0.12)';
             linkColor = '#0969da';
         } else if (hsp < 40) {
-            // ─── ГЛУБОКАЯ ТЕМНАЯ ТЕМА (например, Черный фон) ───
+            // ─── ТЕМНАЯ ТЕМА (Выбран черный / темно-серый цвет) ───
             textColor = '#ffffff';
             textMuted = '#919eab';
-            blockBg = 'rgba(255, 255, 255, 0.06)'; // Легкое осветление внутренних блоков
+            blockBg = 'rgba(255, 255, 255, 0.06)'; // Блоки чуть светлее черного фона
             borderStyle = 'rgba(255, 255, 255, 0.15)';
             linkColor = '#58a6ff';
         } else {
-            // ─── ЛЮБОЙ ДРУГОЙ ЦВЕТ ИЗ ПАЛИТРЫ (Синий, красный, зеленый и т.д.) ───
-            // Если выбран промежуточный цвет, адаптивно подстраиваем внутренние блоки
+            // ─── ЦВЕТНАЯ ТЕМА (Любой цвет из палитры: красный, фиолетовый, зеленый) ───
             if (hsp > 127.5) {
-                // Цвет ближе к светлому
+                // Цвет яркий/ближе к светлому
                 textColor = '#05070a';
                 textMuted = 'rgba(0, 0, 0, 0.7)';
                 blockBg = 'rgba(0, 0, 0, 0.07)';
                 borderStyle = 'rgba(0, 0, 0, 0.15)';
                 linkColor = '#003d99';
             } else {
-                // Цвет ближе к темному
+                // Цвет глубокий/ближе к темному
                 textColor = '#ffffff';
                 textMuted = 'rgba(255, 255, 255, 0.75)';
                 blockBg = 'rgba(255, 255, 255, 0.09)';
@@ -173,7 +172,7 @@
             }
         }
 
-        // Запись переменных в документ
+        // Применяем вычисленные цвета темы к CSS-переменным документа
         const root = document.documentElement;
         root.style.setProperty('--u-bg', hexColor);
         root.style.setProperty('--u-text', textColor);
@@ -184,7 +183,7 @@
     }
 
     function enforceSavedColor() {
-        const savedColor = localStorage.getItem(globalStorageKey) || '#0d1117'; // По умолчанию темный GitHub-цвет
+        const savedColor = localStorage.getItem(globalStorageKey) || '#0d1117';
         applyUniversalTheme(savedColor);
         
         const picker = document.getElementById('dmBgPicker');
@@ -193,7 +192,7 @@
         }
     }
 
-    // Первичная инициализация цвета до рендеринга интерфейса
+    // Инициализация темы сразу при подключении скрипта
     const initColor = localStorage.getItem(globalStorageKey) || '#0d1117';
     applyUniversalTheme(initColor);
 
@@ -248,7 +247,7 @@
             <a href="https://dmamax.netlify.app/impressum" target="_blank">Impressum</a> | 
             <a href="https://dmamax.netlify.app/datenschutz" target="_blank">Datenschutz</a>
             <span class="dm-inline-picker-wrapper">
-                <input type="color" id="dmBgPicker" class="dm-round-picker" title="Hintergrundfarbe für alle Seiten ändern">
+                <input type="color" id="dmBgPicker" class="dm-round-picker" title="Design-Thema für alle Seiten ändern">
             </span>
         `;
         document.documentElement.appendChild(footer);
@@ -293,4 +292,4 @@
         mount();
     }
 })();
-        
+    
