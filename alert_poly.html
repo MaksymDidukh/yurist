@@ -1,6 +1,6 @@
 <script>
 (function() {
-    // 1. Создаем стили
+    // 1. Создаем стили (для футера, модалки и плавающей кнопки)
     const style = document.createElement('style');
     style.innerHTML = `
         .universal-legal-footer {
@@ -27,7 +27,6 @@
         ul { padding-left: 20px; margin-bottom: 25px; }
         li { margin-bottom: 12px; }
         
-        /* Кнопки принятия условий */
         .modal-buttons { text-align: right; margin-top: 20px; border-top: 1px solid #30363d; padding-top: 15px; }
         .btn-legal { padding: 8px 16px; border-radius: 6px; font-size: 14px; cursor: pointer; border: none; margin-left: 10px; font-weight: bold; }
         .btn-accept { background: #238636; color: #ffffff; }
@@ -35,29 +34,29 @@
         .btn-decline { background: #21262d; color: #f0f6fc; border: 1px solid #30363d; }
         .btn-decline:hover { background: #30363d; }
 
-        /* Контейнер для кружка палитры */
-        .inline-color-picker-wrapper {
-            display: inline-flex;
-            align-items: center;
-            vertical-align: middle;
-            margin-left: 10px;
+        /* ПЛАВАЮЩАЯ КНОПКА ВЫБОРА ЦВЕТА НА СТРАНИЦЕ */
+        .floating-color-picker-wrapper {
+            position: fixed;
+            bottom: 45px; /* Чуть выше футера, чтобы не перекрывать текст */
+            right: 20px;  /* В правом нижнем углу */
             background: rgba(255, 255, 255, 0.1);
-            padding: 3px;
+            padding: 4px;
             border-radius: 50%;
-            box-shadow: 0 2px 6px rgba(0,0,0,0.4);
-            transition: transform 0.2s ease;
+            box-shadow: 0 4px 12px rgba(0,0,0,0.5);
+            transition: transform 0.2s ease, background 0.2s ease;
+            z-index: 999998; /* Позади модалки, но поверх сайта */
         }
-        .inline-color-picker-wrapper:hover {
+        .floating-color-picker-wrapper:hover {
             transform: scale(1.1);
+            background: rgba(255, 255, 255, 0.2);
         }
 
-        /* Инпут выбора цвета */
         .round-picker {
             -webkit-appearance: none;
             -moz-appearance: none;
             appearance: none;
-            width: 24px;
-            height: 24px;
+            width: 32px;
+            height: 32px;
             background: transparent;
             border: none;
             cursor: pointer;
@@ -66,12 +65,12 @@
         }
         .round-picker::-webkit-color-swatch-wrapper { padding: 0; }
         .round-picker::-webkit-color-swatch {
-            border: 1px solid #fff;
+            border: 2px solid #fff;
             border-radius: 50%;
             background: conic-gradient(red, yellow, lime, aqua, blue, magenta, red);
         }
         .round-picker::-moz-color-swatch {
-            border: 1px solid #fff;
+            border: 2px solid #fff;
             border-radius: 50%;
             background: conic-gradient(red, yellow, lime, aqua, blue, magenta, red);
         }
@@ -88,7 +87,15 @@
     `;
     document.body.appendChild(footer);
 
-    // 3. Создаем новое модальное окно (Кружок встроен в заголовок рядом с Datenschutz)
+    // 3. Создаем кнопку выбора цвета (кружок), которая будет видна всегда на странице
+    const pickerWrapper = document.createElement('div');
+    pickerWrapper.className = 'floating-color-picker-wrapper';
+    pickerWrapper.innerHTML = `
+        <input type="color" id="bgPicker" class="round-picker" title="Выбрать цвет фона страницы">
+    `;
+    document.body.appendChild(pickerWrapper);
+
+    // 4. Создаем модальное окно
     const modal = document.createElement('div');
     modal.id = 'legal-modal';
     modal.innerHTML = `
@@ -97,12 +104,7 @@
             <h1>Rechtliche Bestätigung</h1>
             <p>Sie nutzen gerade das Projekt: <strong>Sterm</strong></p>
             
-            <h2>
-                Impressum | Datenschutz
-                <span class="inline-color-picker-wrapper">
-                    <input type="color" id="bgPicker" class="round-picker" title="Выбрать цвет фона">
-                </span>
-            </h2>
+            <h2>Impressum | Datenschutz</h2>
             
             <ul>
                 <li><strong>Inhalte:</strong> Nutzer können Inhalte (Texte, Zeichnungen, Nachrichten) erstellen. Diese können im Rahmen der Funktionalität gespeichert werden.</li>
@@ -121,9 +123,13 @@
     `;
     document.body.appendChild(modal);
 
-    // 4. Логика смены фона сайта и сохранения в LocalStorage
+    // 5. УНИКАЛЬНАЯ КЛЮЧЕВАЯ ЛОГИКА ДЛЯ МНОЖЕСТВА СТРАНИЦ
     const picker = document.getElementById('bgPicker');
-    const savedColor = localStorage.getItem('siteBackgroundColor');
+    
+    // Используем путь страницы (pathname) как уникальный ключ для сохранения цвета.
+    // Благодаря этому на каждой странице (например: /page1.html, /page2.html) сохранится свой собственный цвет фона!
+    const storageKey = 'bg_color_' + window.location.pathname;
+    const savedColor = localStorage.getItem(storageKey);
     
     if (savedColor) {
         document.body.style.backgroundColor = savedColor;
@@ -135,24 +141,17 @@
     });
 
     picker.addEventListener('change', (event) => {
-        localStorage.setItem('siteBackgroundColor', event.target.value);
+        localStorage.setItem(storageKey, event.target.value);
     });
 
-    // 5. Логика кнопок и открытия/закрытия модального окна
+    // 6. Логика кнопок и открытия/закрытия модального окна
     document.getElementById('open-legal').onclick = () => modal.style.display = 'block';
     document.getElementById('close-legal').onclick = () => modal.style.display = 'none';
     
-    // Действия при нажатии на кнопки внутри модалки
-    document.getElementById('accept-legal').onclick = () => {
-        console.log('Пользователь принял условия Sterm');
-        modal.style.display = 'none';
-    };
-    document.getElementById('decline-legal').onclick = () => {
-        console.log('Пользователь отклонил условия Sterm');
-        modal.style.display = 'none';
-    };
+    document.getElementById('accept-legal').onclick = () => { modal.style.display = 'none'; };
+    document.getElementById('decline-legal').onclick = () => { modal.style.display = 'none'; };
 
     window.onclick = (event) => { if (event.target == modal) modal.style.display = 'none'; };
 })();
-        </script>
-        
+ </script>
+ 
