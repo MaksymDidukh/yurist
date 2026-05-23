@@ -323,7 +323,8 @@
         });
     }
 
-    function addFooter() {
+    
+                    function addFooter() {
         if (!isAccepted || document.querySelector('.dm-universal-footer')) return;
         const footer = document.createElement('div');
         footer.className = 'dm-universal-footer';
