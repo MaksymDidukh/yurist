@@ -3,14 +3,13 @@
     const contactEmail = "didukh.maxim@gmail.com";
     const globalStorageKey = 'siteThemeUniversalColor';
     const globalOpacityKey = 'siteThemeOpacity';
-    const globalRandomKey = 'siteThemeRandomAccent'; // Ключ для галочки рандома
-    const globalRandomColorKey = 'siteThemeRandomAccentColor'; // Ключ для хранения самого цвета рандома
+    const globalRandomKey = 'siteThemeRandomAccent'; // Состояние галочки рандома
 
     const DEFAULT_BLUE_COLOR = '#0c162d'; 
 
     let isAccepted = false;
 
-    // 1. Инъекция адаптивных стилей темы и управления элементами
+    // 1. Инъекция базовых стилей темы
     const styleId = 'dm-styles-integrated';
     if (!document.getElementById(styleId)) {
         const style = document.createElement('style');
@@ -34,27 +33,23 @@
                 transition: opacity 0.15s ease !important;
             }
 
-            /* Контроль читаемости текстов стороннего сайта */
+            /* Контроль читаемости базовых текстов стороннего сайта */
             body p, body span, body li, body th, body td, body label, body small, body time {
                 color: var(--u-text-muted) !important;
             }
             
-            /* Заголовки и важный текст окрашиваются в акцентный цвет (может быть рандомным) */
-            body h1, body h2, body h3, body h4, body h5, body h6, body strong, body b {
-                color: var(--u-link) !important;
-            }
-            
-            /* Ссылки стороннего сайта всегда используют акцентный цвет */
+            /* Дефолтные стили для ссылок (переопределяются скриптом в режиме рандома) */
             body a:not([class^="dm-"]) {
-                color: var(--u-link) !important;
+                color: var(--u-link-default, #58a6ff) !important;
                 text-decoration: underline !important;
             }
             
-            /* Кнопки и инпуты получают обводку (border) акцентного цвета */
+            /* Дефолтные стили для кнопок и инпутов */
             body button:not([class^="dm-"]), body input:not([class^="dm-"]), body select:not([class^="dm-"]) {
                 background-color: var(--u-block-bg) !important;
                 color: var(--u-text) !important;
-                border: 2px solid var(--u-link) !important; /* Обводка акцентным цветом */
+                border: 2px solid var(--u-border) !important;
+                transition: border-color 0.2s, color 0.2s !important;
             }
 
             /* ИЗОЛИРОВАННЫЕ СТИЛИ СЛУЖЕБНОГО ИНТЕРФЕЙСА (Полный сброс) */
@@ -64,27 +59,18 @@
                 box-sizing: border-box !important;
             }
             .dm-lock-hard {
-                overflow: hidden !important;
-                height: 100vh !important;
-                width: 100vw !important;
-                position: fixed !important;
+                overflow: hidden !important; height: 100vh !important; width: 100vw !important; position: fixed !important;
             }
             #dm-legal-consent {
-                position: fixed !important; top: 0 !important; left: 0 !important;
-                width: 100vw !important; height: 100vh !important;
-                background: rgba(10, 10, 12, 0.98) !important;
-                z-index: 2147483647 !important;
+                position: fixed !important; top: 0 !important; left: 0 !important; width: 100vw !important; height: 100vh !important;
+                background: rgba(10, 10, 12, 0.98) !important; z-index: 2147483647 !important;
                 display: flex !important; align-items: center !important; justify-content: center !important;
-                backdrop-filter: blur(25px) !important;
-                padding: 10px !important; 
+                backdrop-filter: blur(25px) !important; padding: 10px !important; 
             }
             .dm-consent-box {
-                background: #161b22 !important; color: #c9d1d9 !important; 
-                padding: 20px 15px !important; border-radius: 12px !important; 
-                max-width: 550px !important; width: 100% !important;
-                max-height: 90vh !important; overflow-y: auto !important;
-                border: 1px solid #30363d !important; text-align: center !important;
-                box-shadow: 0 20px 60px rgba(0,0,0,1) !important;
+                background: #161b22 !important; color: #c9d1d9 !important; padding: 20px 15px !important; border-radius: 12px !important; 
+                max-width: 550px !important; width: 100% !important; max-height: 90vh !important; overflow-y: auto !important;
+                border: 1px solid #30363d !important; text-align: center !important; box-shadow: 0 20px 60px rgba(0,0,0,1) !important;
             }
             .dm-btn-group { 
                 display: flex !important; gap: 10px !important; justify-content: center !important; margin-top: 20px !important; width: 100% !important;
@@ -109,7 +95,6 @@
             }
             .dm-universal-footer a { color: #58a6ff !important; text-decoration: none !important; font-weight: bold !important; }
             
-            /* Панель инструментов управления темой */
             .dm-controls-group {
                 display: inline-flex !important; align-items: center !important; gap: 10px !important; flex-shrink: 0 !important;
             }
@@ -137,7 +122,6 @@
                 width: 12px !important; height: 12px !important; border-radius: 50% !important; background: #58a6ff !important; cursor: pointer !important;
             }
 
-            /* Кастомный чекбокс для рандома */
             .dm-checkbox-label {
                 display: inline-flex !important; align-items: center !important; gap: 4px !important; cursor: pointer !important;
             }
@@ -158,37 +142,13 @@
         (document.head || document.documentElement).appendChild(style);
     }
 
-    // Вспомогательная функция для генерации случайного яркого HEX-цвета
-    function generateRandomBrightColor() {
+    // Вспомогательная функция для генерации яркого, сочного цвета (HSL модель)
+    function getRandomBrightColor() {
         const h = Math.floor(Math.random() * 360);
-        // Фиксируем высокую насыщенность (85-100%) и среднюю яркость (55-70%) для максимальной сочности
-        const s = 90;
-        const l = 60;
-        
-        const hDecimal = h / 360;
-        const sDecimal = s / 100;
-        const lDecimal = l / 100;
-        
-        let q = lDecimal < 0.5 ? lDecimal * (1 + sDecimal) : lDecimal + sDecimal - lDecimal * sDecimal;
-        let p = 2 * lDecimal - q;
-        
-        const hue2rgb = (p, q, t) => {
-            if (t < 0) t += 1;
-            if (t > 1) t -= 1;
-            if (t < 1/6) return p + (q - p) * 6 * t;
-            if (t < 1/2) return q;
-            if (t < 2/3) return p + (q - p) * (2/3 - t) * 6;
-            return p;
-        };
-        
-        const r = Math.round(hue2rgb(p, q, hDecimal + 1/3) * 255);
-        const g = Math.round(hue2rgb(p, q, hDecimal) * 255);
-        const b = Math.round(hue2rgb(p, q, hDecimal - 1/3) * 255);
-        
-        return "#" + [r, g, b].map(x => x.toString(16).padStart(2, '0')).join('');
+        return `hsl(${h}, 95%, 60%)`;
     }
 
-    // 2. Генератор адаптивной темы
+    // 2. Генератор адаптивной базовой темы (HSP алгоритм)
     function applyUniversalTheme(hexColor) {
         const shorthandRegex = /^#?([a-f\d])([a-f\d])([a-f\d])$/i;
         let hex = hexColor.replace(shorthandRegex, (m, r, g, b) => r + r + g + g + b + b);
@@ -204,44 +164,15 @@
         let textColor, textMuted, blockBg, borderStyle, defaultLinkColor;
 
         if (hsp > 200) { 
-            textColor = '#0e1116';
-            textMuted = '#48525c';
-            blockBg = 'rgba(0, 0, 0, 0.04)'; 
-            borderStyle = 'rgba(0, 0, 0, 0.12)';
-            defaultLinkColor = '#0969da';
+            textColor = '#0e1116'; textMuted = '#48525c'; blockBg = 'rgba(0, 0, 0, 0.04)'; borderStyle = 'rgba(0, 0, 0, 0.12)'; defaultLinkColor = '#0969da';
         } else if (hsp < 40) {
-            textColor = '#ffffff';
-            textMuted = '#919eab';
-            blockBg = 'rgba(255, 255, 255, 0.06)'; 
-            borderStyle = 'rgba(255, 255, 255, 0.15)';
-            defaultLinkColor = '#58a6ff';
+            textColor = '#ffffff'; textMuted = '#919eab'; blockBg = 'rgba(255, 255, 255, 0.06)'; borderStyle = 'rgba(255, 255, 255, 0.15)'; defaultLinkColor = '#58a6ff';
         } else {
             if (hsp > 127.5) {
-                textColor = '#05070a';
-                textMuted = 'rgba(0, 0, 0, 0.7)';
-                blockBg = 'rgba(0, 0, 0, 0.07)';
-                borderStyle = 'rgba(0, 0, 0, 0.15)';
-                defaultLinkColor = '#003d99';
+                textColor = '#05070a'; textMuted = 'rgba(0, 0, 0, 0.7)'; blockBg = 'rgba(0, 0, 0, 0.07)'; borderStyle = 'rgba(0, 0, 0, 0.15)'; defaultLinkColor = '#003d99';
             } else {
-                textColor = '#ffffff';
-                textMuted = 'rgba(255, 255, 255, 0.75)';
-                blockBg = 'rgba(255, 255, 255, 0.09)';
-                borderStyle = 'rgba(255, 255, 255, 0.2)';
-                defaultLinkColor = '#9cd4ff';
+                textColor = '#ffffff'; textMuted = 'rgba(255, 255, 255, 0.75)'; blockBg = 'rgba(255, 255, 255, 0.09)'; borderStyle = 'rgba(255, 255, 255, 0.2)'; defaultLinkColor = '#9cd4ff';
             }
-        }
-
-        // Проверяем включена ли галочка рандома
-        const isRandomActive = localStorage.getItem(globalRandomKey) === 'true';
-        let finalLinkColor = defaultLinkColor;
-
-        if (isRandomActive) {
-            let savedRandomColor = localStorage.getItem(globalRandomColorKey);
-            if (!savedRandomColor) {
-                savedRandomColor = generateRandomBrightColor();
-                localStorage.setItem(globalRandomColorKey, savedRandomColor);
-            }
-            finalLinkColor = savedRandomColor; // Переопределяем цвет ссылок и обводок на рандомный
         }
 
         const root = document.documentElement;
@@ -250,7 +181,46 @@
         root.style.setProperty('--u-text-muted', textMuted);
         root.style.setProperty('--u-block-bg', blockBg);
         root.style.setProperty('--u-border', borderStyle);
-        root.style.setProperty('--u-link', finalLinkColor);
+        root.style.setProperty('--u-link-default', defaultLinkColor);
+
+        // Запуск процесса раскрашивания элементов контента сайта
+        colorizeElementsOnSite();
+    }
+
+    // 3. Функция, которая делает ВСЕ кнопки, ссылки и заголовки разноцветными
+    function colorizeElementsOnSite() {
+        const isRandomActive = localStorage.getItem(globalRandomKey) === 'true';
+
+        // Собираем все элементы, которые должны быть цветными
+        const elements = document.querySelectorAll('body a:not([class^="dm-"]), body button:not([class^="dm-"]), body h1, body h2, body h3, body h4, body h5, body h6, body strong');
+
+        elements.forEach(el => {
+            if (isRandomActive) {
+                // Если цвет у элемента уже есть, повторно не перегенерируем, чтобы не мигал интерфейс
+                if (!el.dataset.dmCustomColor) {
+                    const randomColor = getRandomBrightColor();
+                    el.dataset.dmCustomColor = randomColor; // Сохраняем метку цвета в DOM
+                }
+                
+                const assignedColor = el.dataset.dmCustomColor;
+
+                // Разделяем логику покраски в зависимости от типа тега
+                const tagName = el.tagName.toLowerCase();
+                if (tagName === 'a' || tagName.startsWith('h') || tagName === 'strong') {
+                    // Ссылки, заголовки и важный текст красятся в свой яркий цвет
+                    el.style.setProperty('color', assignedColor, 'important');
+                } else if (tagName === 'button') {
+                    // Кнопки получают разноцветную рамку и разноцветный текст
+                    el.style.setProperty('border-color', assignedColor, 'important');
+                    el.style.setProperty('color', assignedColor, 'important');
+                }
+            } else {
+                // Если галочка выключена — полностью очищаем кастомные inline-стили контента
+                el.removeAttribute('data-dm-custom-color');
+                el.style.removeProperty('color');
+                el.style.removeProperty('border-color');
+            }
+        });
     }
 
     function applyOpacity(val) {
@@ -300,7 +270,7 @@
                     <a href="https://dmamax.netlify.app/datenschutz" target="_blank" style="color:#58a6ff !important;">Datenschutz</a>
                 </div>
                 <div style="text-align:left !important; background:#0d1117 !important; padding:15px !important; border-radius:8px !important; border-left:4px solid #58a6ff !important; font-size:12.5px !important; line-height:1.6 !important; color:#c9d1d9 !important; margin-bottom:20px !important;">
-                    • <b>Inhalte:</b> Nutzer können Inhalte (Texte, Zeichnungen, Nachrichten) erstellen. Diese können im Rahmen της Funktionalität gespeichert werden.<br><br>
+                    • <b>Inhalte:</b> Nutzer können Inhalte (Texte, Zeichnungen, Nachrichten) erstellen. Diese können im Rahmen der Funktionalität gespeichert werden.<br><br>
                     • <b>Externe Inhalte:</b> Einige Projekte können externe Webseiten oder Dienste einbinden. Für deren Inhalte sind die jeweiligen Betreiber verantwortlich.<br><br>
                     • <b>Verhaltensregeln:</b> Die Nutzung für rechtswidrige, beleidigende oder schädliche Inhalte ist untersagt.<br><br>
                     • <b>Datenverarbeitung:</b> Es können technische Daten sowie LocalStorage-Daten zur Funktion gespeichert werden.
@@ -325,9 +295,7 @@
         });
     }
 
-    
-                
-function addFooter() {
+    function addFooter() {
         if (!isAccepted || document.querySelector('.dm-universal-footer')) return;
         const footer = document.createElement('div');
         footer.className = 'dm-universal-footer';
@@ -338,9 +306,9 @@ function addFooter() {
             
             <div class="dm-controls-group">
                 <span class="dm-label-text">Opacity:</span>
-                <input type="range" id="dmOpacitySlider" class="dm-opacity-range" min="0.1" max="1.0" step="0.05" title="Прозрачность элементов сайта">
+                <input type="range" id="dmOpacitySlider" class="dm-opacity-range" min="0.1" max="1.0" step="0.05" title="Прозрачность блоков">
                 
-                <label class="dm-checkbox-label" title="Включить случайный цвет для ссылок, заголовков и обводок кнопок">
+                <label class="dm-checkbox-label" title="Включить индивидуальные разноцветные оттенки для ссылок, заголовков и кнопок">
                     <input type="checkbox" id="dmRandomCheckbox" class="dm-checkbox-native">
                     <span class="dm-label-text">Рандом</span>
                 </label>
@@ -385,12 +353,6 @@ function addFooter() {
             checkbox.checked = localStorage.getItem(globalRandomKey) === 'true';
             checkbox.addEventListener('change', (e) => {
                 localStorage.setItem(globalRandomKey, e.target.checked);
-                if (e.target.checked) {
-                    // Генерируем новый случайный цвет при включении галочки
-                    localStorage.setItem(globalRandomColorKey, generateRandomBrightColor());
-                } else {
-                    localStorage.removeItem(globalRandomColorKey);
-                }
                 applyUniversalTheme(localStorage.getItem(globalStorageKey) || DEFAULT_BLUE_COLOR);
             });
         }
@@ -400,7 +362,6 @@ function addFooter() {
                 localStorage.setItem(globalStorageKey, DEFAULT_BLUE_COLOR);
                 localStorage.setItem(globalOpacityKey, '1.0');
                 localStorage.setItem(globalRandomKey, 'false');
-                localStorage.removeItem(globalRandomColorKey);
                 
                 applyUniversalTheme(DEFAULT_BLUE_COLOR);
                 applyOpacity('1.0');
@@ -424,6 +385,7 @@ function addFooter() {
         }
     });
 
+    // Мониторинг в интервале для перекраски динамически подгружаемых ajax-элементов контента
     setInterval(() => {
         if (!isAccepted) {
             mount();
