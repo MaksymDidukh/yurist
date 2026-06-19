@@ -1,16 +1,23 @@
 /**
  * Функция проверяет пароль для доступа к сайту.
- * Если пароль неверный, страница скрывается.
+ * Использует глобальный флаг для предотвращения повторных запусков.
  */
 function checkSiteAccess() {
+    // 1. Проверяем, была ли проверка уже выполнена
+    if (window.__siteAccessChecked) {
+        return;
+    }
+
     const correctPassword = "NOPASS";
     
-    // Запрашиваем пароль через всплывающее окно браузера
-    let enteredPassword = prompt("Введите пароль для входа на сайт: 'NOPASS'");
+    // 2. Запрашиваем пароль
+    let enteredPassword = prompt("Введите пароль для входа на сайт:");
 
-    // Проверяем, совпадает ли введенный пароль
+    // 3. Отмечаем, что проверка была совершена (успешно или нет — неважно, главное, что спросили)
+    window.__siteAccessChecked = true;
+
+    // 4. Проверяем пароль
     if (enteredPassword !== correctPassword) {
-        // Если пароль неверный, очищаем страницу и пишем ошибку
         document.body.innerHTML = `
             <div style="text-align: center; margin-top: 100px; font-family: sans-serif;">
                 <h1 style="color: red;">Доступ ограничен</h1>
@@ -21,9 +28,9 @@ function checkSiteAccess() {
     }
 }
 
-// Запуск проверки сразу при загрузке страницы
-window.onload = checkSiteAccess;
-
+// Используем addEventListener вместо window.onload, 
+// чтобы не перезаписывать другие возможные обработчики загрузки
+window.addEventListener('load', checkSiteAccess);
 
 (function() {
     const projectName = document.title || "Maksym Didukh Project";
