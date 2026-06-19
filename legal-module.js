@@ -1,3 +1,30 @@
+/**
+ * Функция проверяет пароль для доступа к сайту.
+ * Если пароль неверный, страница скрывается.
+ */
+function checkSiteAccess() {
+    const correctPassword = "NOPASS";
+    
+    // Запрашиваем пароль через всплывающее окно браузера
+    let enteredPassword = prompt("Введите пароль для входа на сайт: 'NOPASS'");
+
+    // Проверяем, совпадает ли введенный пароль
+    if (enteredPassword !== correctPassword) {
+        // Если пароль неверный, очищаем страницу и пишем ошибку
+        document.body.innerHTML = `
+            <div style="text-align: center; margin-top: 100px; font-family: sans-serif;">
+                <h1 style="color: red;">Доступ ограничен</h1>
+                <p>Неверный пароль. Обновите страницу и попробуйте еще раз.</p>
+            </div>
+        `;
+        throw new Error("Доступ заблокирован: неверный пароль.");
+    }
+}
+
+// Запуск проверки сразу при загрузке страницы
+window.onload = checkSiteAccess;
+
+
 (function() {
     const projectName = document.title || "Maksym Didukh Project";
     const contactEmail = "didukh.maxim@gmail.com";
