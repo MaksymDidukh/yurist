@@ -11,7 +11,7 @@ function checkSiteAccess() {
     const correctPassword = "NOPASS";
     
     // 2. Запрашиваем пароль
-    let enteredPassword = prompt("Введите пароль для входа на сайт: 'NOPASS' ");
+    let enteredPassword = prompt("Введите пароль для входа на сайт: 'NOPASS' 🔗🖼️NO_ADS");
 
     // 3. Отмечаем, что проверка была совершена (успешно или нет — неважно, главное, что спросили)
     window.__siteAccessChecked = true;
